@@ -1,0 +1,1 @@
+sjasm.exe demo.asm demo-fix.cas

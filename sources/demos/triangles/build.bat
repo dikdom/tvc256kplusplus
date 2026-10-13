@@ -1,0 +1,1 @@
+sjasm.exe tr-demo.asm trd.cas

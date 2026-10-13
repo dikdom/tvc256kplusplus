@@ -1,0 +1,902 @@
+Sjasm Z80 Assembler v0.42c - www.xl2s.tk             [2026.05.10 - 13:24:45]
+
+sms-as.asm
+Errors: 0
+
+       1   00:195F                      ;PPREG_SPRITE_X equ $00
+       2   00:195F                      ;PPREG_SPRITE_Y equ $20
+       3   00:195F                      ;PPREG_SPRITE_COLOR equ $40
+       4   00:195F                      ;PPREG_SPRITE_PHASE equ $50
+       5   00:195F                      
+       6   00:195F                      ;PPREG_SPRITE_ENABLE_LOW equ $90
+       7   00:195F                      ;PPREG_SPRITE_ENABLE_HIGH equ $91
+       8   00:195F                      ;PPREG_SPRITE_COLORMODE_LOW equ $94
+       9   00:195F                      ;PPREG_SPRITE_COLORMODE_HIGH equ $95
+      10   00:195F                      
+      11   00:195F  (00:0B4F)           BORDER_SHADOW equ $0b4F
+      12   00:195F                      
+      13   00:195F  (00:0000)           REG_SPRITE_X equ $00
+      14   00:195F  (00:0020)           REG_SPRITE_Y equ $20
+      15   00:195F  (00:0050)           REG_SPRITE_PHASE equ $50
+      16   00:195F  (00:0070)           REG_SPRITE_ENABLE equ $70
+      17   00:195F  (00:0080)           REG_SPRITE_COLORMODE equ $80
+      18   00:195F  (00:00A0)           PPREG_SCREEN_VIDEOMODE equ $A0
+      19   00:195F  (00:00B0)           REG_MEMORY_P2 equ $B0
+      20   00:195F  (00:00D0)           REG_USB_INIT equ $D0
+      21   00:195F                      
+      22   00:195F  (00:000A)           POSX_MINUS equ 10
+      23   00:195F  (00:0006)           POSY_MINUS equ 6
+      24   00:195F  (00:001E)           POSX_PLUS equ  30
+      25   00:195F  (00:0006)           POSY_PLUS equ  6
+      26   00:195F                      
+      27   00:195F                      	org $19ef - $90
+      28   00:195F                      	include "cas-header.asm"
+       1.  00:195F                      ; fileType - $01 buffered, $11 non-buffered
+       2.  00:195F  11                    db $11
+       3.  00:1960                      
+       4.  00:1960                      ; copyprotect - $00 no protection
+       5.  00:1960  00                    db $00
+       6.  00:1961                      
+       7.  00:1961                      ; number of blocks, lo-hi order. Program size in $80 sized blocks
+       8.  00:1961  0A 00                 dw ((PROGRAM_END - PROGRAM_START - 1) / $80 ) + 1
+       9.  00:1963                      
+      10.  00:1963                      ; lastblock bytes (0-$7f)
+      11.  00:1963  1F                    db (PROGRAM_END - PROGRAM_START) % $80
+      12.  00:1964                      
+      13.  00:1964                      ; filled with zeroes
+      14.  00:1964  00 (123)              ds ($80-$05)
+      15.  00:19DF                      
+      16.  00:19DF                      ; always $00
+      17.  00:19DF  00                    db $00
+      18.  00:19E0                      
+      19.  00:19E0                      ; type of file: 01h program file, $00 data file
+      20.  00:19E0  01                    db $01
+      21.  00:19E1                      
+      22.  00:19E1                      ; program size in bytes lo/hi order
+      23.  00:19E1  9F 04                 dw (PROGRAM_END - PROGRAM_START)
+      24.  00:19E3                      
+      25.  00:19E3                      ; autorun if $ff
+      26.  00:19E3  00                    db $00
+      27.  00:19E4                      
+      28.  00:19E4                      ; always $00
+      29.  00:19E4  00 (11)               ds ($90-$85)
+      29   00:19EF                      PROGRAM_START:
+      30   00:19EF                      	include "basic-header.asm"
+       1.  00:19EF                              org     19efh
+       2.  00:19EF  0E 0A 00 DD                 db      0eh,0ah,00h,0ddh
+       3.  00:19F3  55 53 52                    db      "USR"
+       4.  00:19F6  96                          db      96h
+       5.  00:19F7  36 36 35 36                 db      "6656"
+       6.  00:19FB  95 FF 00 00 00              db      95h,0ffh,00h,00h,00h
+      31   00:1A00                      	org $1a00
+      32   00:1A00                      	
+      33   00:1A00  F7                  	rst $30
+      34   00:1A01  5D                  	db $5d
+      35   00:1A02  B7                  	or a
+      36   00:1A03  20 1C               	jr nz, quit
+      37   00:1A05                      	
+      38   00:1A05  79                  	ld a, c
+      39   00:1A06  32 69 1E            	ld (BASE_PORT), a
+      40   00:1A09  C6 04               	add 4
+      41   00:1A0B  32 6A 1E            	ld (BASE_PORT2), a
+      42   00:1A0E                      
+      43   00:1A0E  CD 8D 1B            	call setup
+      44   00:1A11  CD 25 1A            	call main_loop
+      45   00:1A14  CD 1A 1D            	call teardown
+      46   00:1A17  06 01               	ld b, 1
+      47   00:1A19  0E 0C               	ld c, 12
+      48   00:1A1B  F7                  	rst $30
+      49   00:1A1C  23                  	db $23
+      50   00:1A1D                      	
+      51   00:1A1D  21 00 00            	ld hl, 0
+      52   00:1A20  C9                  	ret
+      53   00:1A21                      
+      54   00:1A21                      quit:
+      55   00:1A21  21 FF FF            	ld hl, -1
+      56   00:1A24  C9                  	ret
+      57   00:1A25                      
+      58   00:1A25                      main_loop:
+      59   00:1A25  21 6E 1E            	ld hl, actual_port_values
+      60   00:1A28  11 74 1E            	ld de, shadow_port_values
+      61   00:1A2B  01 06 00            	ld bc, 6
+      62   00:1A2E  ED B0               	ldir
+      63   00:1A30                      	
+      64   00:1A30  21 74 1E            	ld hl, shadow_port_values
+      65   00:1A33  11 7A 1E            	ld de, prev_port_values
+      66   00:1A36  06 06               	ld b, 6
+      67   00:1A38  0E 00               	ld c, 0
+      68   00:1A3A                      .port_check_loop
+      69   00:1A3A  1A                  	ld a, (de)
+      70   00:1A3B  BE                  	cp (hl)
+      71   00:1A3C  C4 63 1B            	call nz, .changed_port_value
+      72   00:1A3F  23                  	inc hl
+      73   00:1A40  13                  	inc de
+      74   00:1A41  0C                  	inc c
+      75   00:1A42  10 F6               	djnz .port_check_loop
+      76   00:1A44                      	
+      77   00:1A44  21 80 1E            	ld hl, actual_coords
+      78   00:1A47  11 84 1E            	ld de, shadow_coords
+      79   00:1A4A  01 04 00            	ld bc, 4
+      80   00:1A4D  F3                  	di
+      81   00:1A4E  ED B0               	ldir
+      82   00:1A50  FB                  	ei
+      83   00:1A51                      	
+      84   00:1A51  0E 0A               	ld c, 10
+      85   00:1A53  06 01               	ld b, 1
+      86   00:1A55  F7                  	rst $30
+      87   00:1A56  23                  	db $23
+      88   00:1A57                      	
+      89   00:1A57  2A 84 1E            	ld hl, (shadow_x)
+      90   00:1A5A  CD 4D 1D            	call print_hex_word
+      91   00:1A5D  CD 73 1D            	call print_newline
+      92   00:1A60  2A 86 1E            	ld hl, (shadow_y)
+      93   00:1A63  CD 4D 1D            	call print_hex_word
+      94   00:1A66                      	
+      95   00:1A66  11 3D 00            	ld de, 21 + ((POSY_MINUS - 2) * 10)
+      96   00:1A69  AF                  	xor a
+      97   00:1A6A  ED 52               	sbc hl, de
+      98   00:1A6C  DA 22 1B            	jp c, .reset_borders
+      99   00:1A6F  2A 86 1E            	ld hl, (shadow_y)
+     100   00:1A72  11 5B 00            	ld de, 21 + ((POSY_MINUS + 1) * 10)
+     101   00:1A75  AF                  	xor a
+     102   00:1A76  ED 52               	sbc hl, de
+     103   00:1A78  D2 22 1B            	jp nc, .reset_borders
+     104   00:1A7B                      	
+     105   00:1A7B  2A 84 1E            	ld hl, (shadow_x)
+     106   00:1A7E  11 38 00            	ld de, 24 + ((POSX_MINUS - 2) * 4)
+     107   00:1A81  AF                  	xor a
+     108   00:1A82  ED 52               	sbc hl, de
+     109   00:1A84  DA 22 1B            	jp c, .reset_borders
+     110   00:1A87                      	
+     111   00:1A87  2A 84 1E            	ld hl, (shadow_x)
+     112   00:1A8A  11 44 00            	ld de, 24 + ((POSX_MINUS + 1) * 4)
+     113   00:1A8D  AF                  	xor a
+     114   00:1A8E  ED 52               	sbc hl, de
+     115   00:1A90  30 3E               	jr nc, .might_be_pos_plus
+     116   00:1A92                      	
+     117   00:1A92  3A 8D 1E            	ld a, (prev_border_minus)
+     118   00:1A95  B7                  	or a
+     119   00:1A96  20 11               	jr nz, .border_minus_drawn
+     120   00:1A98                      	
+     121   00:1A98  06 09               	ld b, POSX_MINUS - 1
+     122   00:1A9A  0E 05               	ld c, POSY_MINUS - 1
+     123   00:1A9C  F7                  	rst $30
+     124   00:1A9D  23                  	db $23
+     125   00:1A9E                      	
+     126   00:1A9E  21 06 1E            	ld hl, border_on
+     127   00:1AA1  CD 3E 1D            	call print_cstring
+     128   00:1AA4  3E 01               	ld a, 1
+     129   00:1AA6  32 8D 1E            	ld (prev_border_minus), a
+     130   00:1AA9                      
+     131   00:1AA9                      .border_minus_drawn:
+     132   00:1AA9  3A 69 1E            	ld a, (BASE_PORT)
+     133   00:1AAC  4F                  	ld c, a
+     134   00:1AAD  3A 7B 1E            	ld a, (prev_port_values + 1)
+     135   00:1AB0  FE 01               	cp 1
+     136   00:1AB2  CA 50 1B            	jp z, .update_prev_values
+     137   00:1AB5  3A 75 1E            	ld a, (shadow_port_values + 1)
+     138   00:1AB8  FE 01               	cp 1
+     139   00:1ABA  C2 50 1B            	jp nz, .update_prev_values
+     140   00:1ABD  3A 79 1E            	ld a, (shadow_port_values + 5)
+     141   00:1AC0  FE 01               	cp 1
+     142   00:1AC2  CA 50 1B            	jp z, .update_prev_values
+     143   00:1AC5  3D                  	dec a
+     144   00:1AC6  06 D5               	ld b, REG_USB_INIT + 5
+     145   00:1AC8  ED 41               	out (c), b
+     146   00:1ACA  0C                  	inc c
+     147   00:1ACB  ED 79               	out (c), a
+     148   00:1ACD  C3 50 1B            	jp .update_prev_values
+     149   00:1AD0                      
+     150   00:1AD0                      .might_be_pos_plus:
+     151   00:1AD0  2A 84 1E            	ld hl, (shadow_x)
+     152   00:1AD3  11 88 00            	ld de, 24 + ((POSX_PLUS - 2) * 4)
+     153   00:1AD6  AF                  	xor a
+     154   00:1AD7  ED 52               	sbc hl, de
+     155   00:1AD9  DA 22 1B            	jp c, .reset_borders
+     156   00:1ADC                      	
+     157   00:1ADC  2A 84 1E            	ld hl, (shadow_x)
+     158   00:1ADF  11 94 00            	ld de, 24 + ((POSX_PLUS + 1) * 4)
+     159   00:1AE2  AF                  	xor a
+     160   00:1AE3  ED 52               	sbc hl, de
+     161   00:1AE5  D2 22 1B            	jp nc, .reset_borders
+     162   00:1AE8                      	
+     163   00:1AE8  3A 8E 1E            	ld a, (prev_border_plus)
+     164   00:1AEB  B7                  	or a
+     165   00:1AEC  20 11               	jr nz, .border_plus_drawn
+     166   00:1AEE                      	
+     167   00:1AEE  06 1D               	ld b, POSX_PLUS - 1
+     168   00:1AF0  0E 05               	ld c, POSY_PLUS - 1
+     169   00:1AF2  F7                  	rst $30
+     170   00:1AF3  23                  	db $23
+     171   00:1AF4                      	
+     172   00:1AF4  21 06 1E            	ld hl, border_on
+     173   00:1AF7  CD 3E 1D            	call print_cstring
+     174   00:1AFA  3E 01               	ld a, 1
+     175   00:1AFC  32 8E 1E            	ld (prev_border_plus), a
+     176   00:1AFF                      
+     177   00:1AFF                      .border_plus_drawn:
+     178   00:1AFF  3A 69 1E            	ld a, (BASE_PORT)
+     179   00:1B02  4F                  	ld c, a
+     180   00:1B03  3A 7B 1E            	ld a, (prev_port_values+1)
+     181   00:1B06  FE 01               	cp 1
+     182   00:1B08  28 46               	jr z, .update_prev_values
+     183   00:1B0A  3A 75 1E            	ld a, (shadow_port_values + 1)
+     184   00:1B0D  FE 01               	cp 1
+     185   00:1B0F  20 3F               	jr nz, .update_prev_values
+     186   00:1B11  3A 79 1E            	ld a, (shadow_port_values + 5)
+     187   00:1B14  FE FF               	cp $FF
+     188   00:1B16  28 38               	jr z, .update_prev_values
+     189   00:1B18  3C                  	inc a
+     190   00:1B19  06 D5               	ld b, REG_USB_INIT + 5
+     191   00:1B1B  ED 41               	out (C), b
+     192   00:1B1D  0C                  	inc c
+     193   00:1B1E  ED 79               	out (c), a
+     194   00:1B20  18 2E               	jr .update_prev_values
+     195   00:1B22                      
+     196   00:1B22                      .reset_borders
+     197   00:1B22  3A 8D 1E            	ld a, (prev_border_minus)
+     198   00:1B25  B7                  	or a
+     199   00:1B26  28 12               	jr z, .check_border_plus
+     200   00:1B28  AF                  	xor a
+     201   00:1B29  32 8D 1E            	ld (prev_border_minus), a
+     202   00:1B2C  06 09               	ld b, POSX_MINUS-1
+     203   00:1B2E  0E 05               	ld c, POSY_MINUS-1
+     204   00:1B30  F7                  	rst $30
+     205   00:1B31  23                  	db $23
+     206   00:1B32  21 18 1E            	ld hl, border_off
+     207   00:1B35  CD 3E 1D            	call print_cstring
+     208   00:1B38  18 16               	jr .update_prev_values
+     209   00:1B3A                      .check_border_plus
+     210   00:1B3A  3A 8E 1E            	ld a, (prev_border_plus)
+     211   00:1B3D  B7                  	or a
+     212   00:1B3E  28 10               	jr z, .update_prev_values
+     213   00:1B40  AF                  	xor a
+     214   00:1B41  32 8E 1E            	ld (prev_border_plus), a
+     215   00:1B44  06 1D               	ld b, POSX_PLUS-1
+     216   00:1B46  0E 05               	ld c, POSY_PLUS-1
+     217   00:1B48  F7                  	rst $30
+     218   00:1B49  23                  	db $23
+     219   00:1B4A  21 18 1E            	ld hl, border_off
+     220   00:1B4D  CD 3E 1D            	call print_cstring
+     221   00:1B50                      
+     222   00:1B50                      .update_prev_values
+     223   00:1B50                      
+     224   00:1B50  21 74 1E            	ld hl, shadow_port_values
+     225   00:1B53  11 7A 1E            	ld de, prev_port_values
+     226   00:1B56  01 06 00            	ld bc, 6
+     227   00:1B59  ED B0               	ldir
+     228   00:1B5B                      	
+     229   00:1B5B  3A E5 0B            	ld a, ($0bE5)
+     230   00:1B5E  B7                  	or a
+     231   00:1B5F  CA 25 1A            	jp z, main_loop
+     232   00:1B62                      	
+     233   00:1B62  C9                  	ret
+     234   00:1B63                      
+     235   00:1B63                      	
+     236   00:1B63                      	
+     237   00:1B63                      .changed_port_value:
+     238   00:1B63  D5                  	push de
+     239   00:1B64  E5                  	push hl
+     240   00:1B65  C5                  	push bc
+     241   00:1B66  41                  	ld b, c
+     242   00:1B67  AF                  	xor a
+     243   00:1B68  B8                  	cp b
+     244   00:1B69  28 06               	jr z, .b_ok
+     245   00:1B6B  AF                  	xor a
+     246   00:1B6C                      .add_8_loop
+     247   00:1B6C  C6 08               	add 8
+     248   00:1B6E  10 FC               	djnz .add_8_loop
+     249   00:1B70  47                  	ld b, a
+     250   00:1B71                      .b_ok
+     251   00:1B71  04                  	inc b
+     252   00:1B72  0E 03               	ld c, 3
+     253   00:1B74  F7                  	rst $30
+     254   00:1B75  23                  	db $23
+     255   00:1B76                      	
+     256   00:1B76  C1                  	pop bc
+     257   00:1B77  C5                  	push bc
+     258   00:1B78  21 74 1E            	ld hl, shadow_port_values
+     259   00:1B7B  59                  	ld e, c
+     260   00:1B7C  16 00               	ld d, 0
+     261   00:1B7E  19                  	add hl, de
+     262   00:1B7F  7E                  	ld a, (hl)
+     263   00:1B80  CD 7D 1D            	call print_dec_byte
+     264   00:1B83  21 02 1E            	ld hl, erase_str
+     265   00:1B86  CD 3E 1D            	call print_cstring
+     266   00:1B89                      	
+     267   00:1B89  C1                  	pop bc
+     268   00:1B8A  E1                  	pop hl
+     269   00:1B8B  D1                  	pop de
+     270   00:1B8C  C9                  	ret
+     271   00:1B8D                      
+     272   00:1B8D                      setup:
+     273   00:1B8D                      ; set port increment to 1
+     274   00:1B8D  3A 6A 1E                ld a, (BASE_PORT2)
+     275   00:1B90  C6 02               	add a, 2
+     276   00:1B92  4F                  	ld c, a
+     277   00:1B93  3E 01               	ld a, 1
+     278   00:1B95  ED 79               	out (c), a
+     279   00:1B97                      	
+     280   00:1B97  3A 69 1E            	ld a, (BASE_PORT)
+     281   00:1B9A  C6 02               	add a, 2
+     282   00:1B9C  4F                  	ld c, a
+     283   00:1B9D  3E 01               	ld a, 1
+     284   00:1B9F  ED 79               	out (c), a
+     285   00:1BA1                      
+     286   00:1BA1                      
+     287   00:1BA1                      ; set videomode to 2c
+     288   00:1BA1  0E 00               	ld c, 0
+     289   00:1BA3  F7                  	rst $30
+     290   00:1BA4  04                  	db $04
+     291   00:1BA5                      	
+     292   00:1BA5                      ; previous port values are set to $fe, so initially thez will be printed out!
+     293   00:1BA5  21 7A 1E            	ld hl, prev_port_values
+     294   00:1BA8  3E FE               	ld a, $fe
+     295   00:1BAA  06 06               	ld b, 6
+     296   00:1BAC                      .fill_prev_port_values_loop
+     297   00:1BAC  77                  	ld (hl), a
+     298   00:1BAD  23                  	inc hl
+     299   00:1BAE  10 FC               	djnz .fill_prev_port_values_loop
+     300   00:1BB0                      	
+     301   00:1BB0                      ; setup sprite
+     302   00:1BB0                      ; pos
+     303   00:1BB0  21 80 00            	ld hl, 128
+     304   00:1BB3  22 80 1E            	ld (actual_x), hl
+     305   00:1BB6  22 82 1E            	ld (actual_y), hl
+     306   00:1BB9                      	
+     307   00:1BB9                      ; phase
+     308   00:1BB9                      ; save P2 memory map
+     309   00:1BB9  3A 69 1E            	ld a, (BASE_PORT)
+     310   00:1BBC  4F                  	ld c, a
+     311   00:1BBD  3E B0               	ld a, REG_MEMORY_P2
+     312   00:1BBF  ED 79               	out (c), A
+     313   00:1BC1  0C                  	inc c
+     314   00:1BC2  ED 78               	in a, (c)
+     315   00:1BC4  32 8C 1E            	ld (p2_mem_store), a
+     316   00:1BC7  0D                  	dec c
+     317   00:1BC8                      
+     318   00:1BC8                      ; set to 0. page
+     319   00:1BC8  3E B0               	ld a, REG_MEMORY_P2
+     320   00:1BCA  ED 79               	out (c), A
+     321   00:1BCC  0C                  	inc c
+     322   00:1BCD  AF                  	xor a
+     323   00:1BCE  ED 79               	out (c), a
+     324   00:1BD0  0D                  	dec c
+     325   00:1BD1                      
+     326   00:1BD1                      ; copy phase data
+     327   00:1BD1  21 2A 1E            	ld hl, sprite_arrow
+     328   00:1BD4  11 00 80            	ld de, $8000
+     329   00:1BD7  01 3F 00            	ld bc, 63
+     330   00:1BDA  ED B0               	ldir
+     331   00:1BDC                      
+     332   00:1BDC                      ; map p2 back to original
+     333   00:1BDC  3A 69 1E            	ld a, (BASE_PORT)
+     334   00:1BDF  4F                  	ld c, a
+     335   00:1BE0  3E B0               	ld a, REG_MEMORY_P2
+     336   00:1BE2  ED 79               	out (c), A
+     337   00:1BE4  0C                  	inc c
+     338   00:1BE5  3A 8C 1E            	ld a, (p2_mem_store)
+     339   00:1BE8  ED 79               	out (c), a
+     340   00:1BEA  0D                  	dec c
+     341   00:1BEB                      
+     342   00:1BEB  3E 50               	ld a, REG_SPRITE_PHASE
+     343   00:1BED  ED 79               	out (c), a
+     344   00:1BEF  0C                  	inc c
+     345   00:1BF0  AF                  	xor a
+     346   00:1BF1  ED 79               	out (c), a
+     347   00:1BF3  0D                  	dec c
+     348   00:1BF4                      	
+     349   00:1BF4  3E 70               	ld a, REG_SPRITE_ENABLE
+     350   00:1BF6  ED 79               	out (c), a
+     351   00:1BF8  0C                  	inc c
+     352   00:1BF9  3E 01               	ld a, 1
+     353   00:1BFB  ED 79               	out (c), a
+     354   00:1BFD  0D                  	dec c
+     355   00:1BFE                      	
+     356   00:1BFE  3E 80               	ld a, REG_SPRITE_COLORMODE
+     357   00:1C00  ED 79               	out (c), a
+     358   00:1C02  0C                  	inc c
+     359   00:1C03  AF                  	xor a
+     360   00:1C04  ED 79               	out (c), a
+     361   00:1C06  0D                  	dec c
+     362   00:1C07                      	
+     363   00:1C07                      ; setup screen 
+     364   00:1C07  21 C8 1D            	ld hl, base_port_addr_str
+     365   00:1C0A  CD 3E 1D            	call print_cstring
+     366   00:1C0D  3A 69 1E            	ld a, (BASE_PORT)
+     367   00:1C10  CD 52 1D            	call print_hex_byte
+     368   00:1C13  CD 73 1D            	call print_newline
+     369   00:1C16                      	
+     370   00:1C16  21 D7 1D            	ld hl, header_str
+     371   00:1C19  CD 3E 1D            	call print_cstring
+     372   00:1C1C                      	
+     373   00:1C1C  06 1E               	ld b, POSX_PLUS
+     374   00:1C1E  0E 06               	ld c, POSY_PLUS
+     375   00:1C20  F7                  	rst $30
+     376   00:1C21  23                  	db $23
+     377   00:1C22  3E 2B               	ld a, '+'
+     378   00:1C24  CD 6F 1D            	call print_char
+     379   00:1C27                      	
+     380   00:1C27  06 0A               	ld b, POSX_MINUS
+     381   00:1C29  0E 06               	ld c, POSY_MINUS
+     382   00:1C2B  F7                  	rst $30
+     383   00:1C2C  23                  	db $23
+     384   00:1C2D  3E 2D               	ld a, '-'
+     385   00:1C2F  CD 6F 1D            	call print_char
+     386   00:1C32                      	
+     387   00:1C32                      ; reroute interrupt to my_isr
+     388   00:1C32  F3                  	di
+     389   00:1C33  3A 3D 00            	ld a, ($003d)
+     390   00:1C36  2A 3E 00            	ld hl, ($003e)
+     391   00:1C39  32 6B 1E            	ld (orig_jump), A
+     392   00:1C3C  22 6C 1E            	ld (orig_jump+1), hl
+     393   00:1C3F                      	
+     394   00:1C3F  21 47 1C            	ld hl, my_isr
+     395   00:1C42  22 3E 00            	ld ($003e), hl
+     396   00:1C45  FB                  	ei
+     397   00:1C46                      	
+     398   00:1C46  C9                  	ret
+     399   00:1C47                      	
+     400   00:1C47                      my_isr:
+     401   00:1C47  F5                  	push af
+     402   00:1C48  3E 82                   ld a, $82
+     403   00:1C4A  D3 00               	out ($00), a
+     404   00:1C4C  C5                  	push bc
+     405   00:1C4D  D5                  	push de
+     406   00:1C4E  E5                  	push hl
+     407   00:1C4F  3A 6A 1E            	ld a, (BASE_PORT2)
+     408   00:1C52  4F                  	ld c, a
+     409   00:1C53  3E D0               	ld a, REG_USB_INIT
+     410   00:1C55  ED 79               	out (c), a
+     411   00:1C57  21 6E 1E            	ld hl, actual_port_values
+     412   00:1C5A  06 06               	ld b, 6
+     413   00:1C5C  0C                  	inc c
+     414   00:1C5D                      .loop
+     415   00:1C5D  ED 78               	in a, (c)
+     416   00:1C5F  77                  	ld (hl), a
+     417   00:1C60  23                  	inc hl
+     418   00:1C61  10 FA               	djnz .loop
+     419   00:1C63  0D                  	dec c
+     420   00:1C64                      	
+     421   00:1C64  3A 6E 1E            	ld a, (actual_port_values)
+     422   00:1C67  FE 01               	cp 1
+     423   00:1C69  C2 0E 1D            	jp nz, .isr_done
+     424   00:1C6C                      	
+     425   00:1C6C  16 00               	ld d, 0
+     426   00:1C6E  2A 80 1E            	ld hl, (actual_x)
+     427   00:1C71  3A 70 1E            	ld a, (actual_port_values+2)
+     428   00:1C74  B7                  	or a
+     429   00:1C75  28 35               	jr z, .calc_y
+     430   00:1C77  FA 8D 1C            	jp m, .sub_x
+     431   00:1C7A  5F                  	ld e, a
+     432   00:1C7B  19                  	add hl, de
+     433   00:1C7C  22 80 1E            	ld (actual_x), hl
+     434   00:1C7F  11 17 01            	ld de, 256+23
+     435   00:1C82  AF                  	xor a
+     436   00:1C83  ED 52               	sbc hl, de
+     437   00:1C85  38 25               	jr c, .calc_y
+     438   00:1C87  ED 53 80 1E         	ld (actual_x), de
+     439   00:1C8B  18 1F               	jr .calc_y
+     440   00:1C8D                      .sub_x
+     441   00:1C8D  ED 44               	neg
+     442   00:1C8F  5F                  	ld e, a
+     443   00:1C90  AF                  	xor a
+     444   00:1C91  ED 52               	sbc hl, de
+     445   00:1C93  22 80 1E            	ld (actual_x), hl
+     446   00:1C96  30 08               	jr nc, .gtzerox
+     447   00:1C98  21 18 00            	ld hl, 24
+     448   00:1C9B  22 80 1E            	ld (actual_x), hl
+     449   00:1C9E  18 0C               	jr .calc_y
+     450   00:1CA0                      .gtzerox
+     451   00:1CA0  11 18 00            	ld de, 24
+     452   00:1CA3  AF                  	xor a
+     453   00:1CA4  ED 52               	sbc hl, de
+     454   00:1CA6  30 04               	jr nc, .calc_y
+     455   00:1CA8  ED 53 80 1E         	ld (actual_x), de
+     456   00:1CAC                      
+     457   00:1CAC                      .calc_y:
+     458   00:1CAC  16 00               	ld d, 0
+     459   00:1CAE  2A 82 1E            	ld hl, (actual_y)
+     460   00:1CB1  3A 71 1E            	ld a, (actual_port_values+3)
+     461   00:1CB4  B7                  	or a
+     462   00:1CB5  FA CD 1C            	jp m, .sub_y
+     463   00:1CB8  28 32               	jr z, .calc_done
+     464   00:1CBA  5F                  	ld e, a
+     465   00:1CBB  19                  	add hl, de
+     466   00:1CBC  22 82 1E            	ld (actual_y), hl
+     467   00:1CBF  11 04 01            	ld de, 240+20
+     468   00:1CC2  AF                  	xor a
+     469   00:1CC3  ED 52               	sbc hl, de
+     470   00:1CC5  38 25               	jr c, .calc_done
+     471   00:1CC7  ED 53 82 1E         	ld (actual_y), de
+     472   00:1CCB  18 1F               	jr .calc_done
+     473   00:1CCD                      .sub_y
+     474   00:1CCD  ED 44               	neg
+     475   00:1CCF  5F                  	ld e, a
+     476   00:1CD0  AF                  	xor a
+     477   00:1CD1  ED 52               	sbc hl, de
+     478   00:1CD3  22 82 1E            	ld (actual_y), hl
+     479   00:1CD6  30 08               	jr nc, .gtzeroy
+     480   00:1CD8  21 15 00            	ld hl, 21
+     481   00:1CDB  22 82 1E            	ld (actual_y), hl
+     482   00:1CDE  18 0C               	jr .calc_done
+     483   00:1CE0                      .gtzeroy
+     484   00:1CE0  11 15 00            	ld de, 21
+     485   00:1CE3  AF                  	xor a
+     486   00:1CE4  ED 52               	sbc hl, de
+     487   00:1CE6  30 04               	jr nc, .calc_done
+     488   00:1CE8  ED 53 82 1E         	ld (actual_y), de
+     489   00:1CEC                      
+     490   00:1CEC                      .calc_done
+     491   00:1CEC  21 80 1E            	ld hl, actual_x
+     492   00:1CEF  3A 6A 1E            	ld a, (BASE_PORT2)
+     493   00:1CF2  4F                  	ld c, a
+     494   00:1CF3  3E 00               	ld a, 0
+     495   00:1CF5  ED 79               	out (c), a
+     496   00:1CF7  0C                  	inc c
+     497   00:1CF8  7E                  	ld a, (hl)
+     498   00:1CF9  ED 79               	out (c), a
+     499   00:1CFB  23                  	inc hl
+     500   00:1CFC  7E                  	ld a, (hl)
+     501   00:1CFD  ED 79               	out (c), a
+     502   00:1CFF  0D                  	dec c
+     503   00:1D00                      	
+     504   00:1D00  3E 20               	ld a, $20
+     505   00:1D02  ED 79               	out (c), a
+     506   00:1D04  0C                  	inc c
+     507   00:1D05  23                  	inc hl
+     508   00:1D06  7E                  	ld a, (hl)
+     509   00:1D07  ED 79               	out (c), a
+     510   00:1D09  23                  	inc hl
+     511   00:1D0A  7E                  	ld a, (hl)
+     512   00:1D0B  ED 79               	out (c), a
+     513   00:1D0D  0D                  	dec c
+     514   00:1D0E                      
+     515   00:1D0E                      .isr_done
+     516   00:1D0E  E1                  	pop hl
+     517   00:1D0F  D1                  	pop de
+     518   00:1D10  C1                  	pop bc
+     519   00:1D11  3A 4F 0B                ld a, (BORDER_SHADOW)
+     520   00:1D14  D3 00               	out ($00), a
+     521   00:1D16                      	
+     522   00:1D16  F1                  	pop af
+     523   00:1D17                      
+     524   00:1D17  C3 6B 1E            	jp orig_jump
+     525   00:1D1A                      	
+     526   00:1D1A                      
+     527   00:1D1A                      	
+     528   00:1D1A                      teardown:
+     529   00:1D1A  3A 69 1E            	ld a, (BASE_PORT)
+     530   00:1D1D  4F                  	ld c, a
+     531   00:1D1E                      	
+     532   00:1D1E  3E 70               	ld a, REG_SPRITE_ENABLE
+     533   00:1D20  ED 79               	out (c), a
+     534   00:1D22  0C                  	inc c
+     535   00:1D23  AF                  	xor a
+     536   00:1D24  ED 79               	out (c), a
+     537   00:1D26  0D                  	dec c
+     538   00:1D27                      	
+     539   00:1D27  F3                  	di
+     540   00:1D28  2A 6C 1E            	ld hl, (orig_jump+1)
+     541   00:1D2B  22 3E 00            	ld ($003e), hl
+     542   00:1D2E  FB                  	ei
+     543   00:1D2F                      	
+     544   00:1D2F  06 01               	ld b, 1
+     545   00:1D31  0E 07               	ld c, 7
+     546   00:1D33  F7                  	rst $30
+     547   00:1D34  23                  	db $23
+     548   00:1D35                      	
+     549   00:1D35  3A E5 0B            	ld a, ($0bE5)
+     550   00:1D38  B7                  	or a
+     551   00:1D39  28 02               	jr z, .done
+     552   00:1D3B  F7                  	rst $30
+     553   00:1D3C  91                  	db $91
+     554   00:1D3D                      .done
+     555   00:1D3D  C9                  	ret
+     556   00:1D3E                      
+     557   00:1D3E                      print_cstring:       
+     558   00:1D3E  C5                  	push bc
+     559   00:1D3F  F5                  	push af
+     560   00:1D40                      .print_cstring_loop:
+     561   00:1D40  7E                  	LD  a,(hl) 
+     562   00:1D41  B7                  	or	a
+     563   00:1D42  28 06               	JR  z,.cstring_done 
+     564   00:1D44  4F                  	ld 	c, a
+     565   00:1D45  F7                  	RST 30h 
+     566   00:1D46  21                  	DB  $21 
+     567   00:1D47  23                  	INC hl 
+     568   00:1D48  18 F6               	JR  .print_cstring_loop
+     569   00:1D4A                      .cstring_done:
+     570   00:1D4A  F1                  	pop af
+     571   00:1D4B  C1                  	pop bc
+     572   00:1D4C  C9                  	RET
+     573   00:1D4D                      print_hex_word:
+     574   00:1D4D  7C                  	ld a, h
+     575   00:1D4E  CD 52 1D            	call print_hex_byte
+     576   00:1D51  7D                  	ld a, l
+     577   00:1D52                      print_hex_byte:      
+     578   00:1D52  C5                  	PUSH    BC 
+     579   00:1D53  F5                  	PUSH    AF 
+     580   00:1D54  0F                  	RRCA     
+     581   00:1D55  0F                  	RRCA     
+     582   00:1D56  0F                  	RRCA     
+     583   00:1D57  0F                  	RRCA     
+     584   00:1D58  E6 0F               	AND     $0F 
+     585   00:1D5A  CD 65 1D            	CALL    print_hex_digit
+     586   00:1D5D  F1                  	POP     AF 
+     587   00:1D5E  E6 0F               	AND     $0F 
+     588   00:1D60  CD 65 1D            	CALL    print_hex_digit
+     589   00:1D63  C1                  	POP     BC 
+     590   00:1D64  C9                  	RET      
+     591   00:1D65                      print_hex_digit:     
+     592   00:1D65  FE 0A               	CP      10 
+     593   00:1D67  30 04               	JR      nc,.alpha_chars
+     594   00:1D69  C6 30               	ADD     A,"0" 
+     595   00:1D6B  18 02               	JR      print_char
+     596   00:1D6D                      .alpha_chars:         
+     597   00:1D6D  C6 37               	ADD     A,"A" - 10 
+     598   00:1D6F                      print_char:
+     599   00:1D6F  4F                  	LD      C,A 
+     600   00:1D70  F7                  	RST     30h 
+     601   00:1D71  21                  	DB      $21
+     602   00:1D72  C9                  	RET
+     603   00:1D73                      	
+     604   00:1D73                      print_newline:
+     605   00:1D73  21 7A 1D            	ld hl, .newline
+     606   00:1D76  CD 3E 1D            	call print_cstring
+     607   00:1D79  C9                  	ret
+     608   00:1D7A                      .newline
+     609   00:1D7A  0D 0A 00            	dz "\r\n"
+     610   00:1D7D                      	
+     611   00:1D7D                      print_dec_byte:
+     612   00:1D7D  C5                          push bc
+     613   00:1D7E  D5                          push de
+     614   00:1D7F  E5                          push hl
+     615   00:1D80  B7                  		or a
+     616   00:1D81  F2 8C 1D            		jp p, .positive_number
+     617   00:1D84  F5                  		push af
+     618   00:1D85  0E 2D               		ld c, '-'
+     619   00:1D87  F7                  		rst $30
+     620   00:1D88  21                  		db $21
+     621   00:1D89  F1                  		pop af
+     622   00:1D8A  ED 44               		neg
+     623   00:1D8C                      .positive_number		
+     624   00:1D8C  06 00                       LD b,0 
+     625   00:1D8E  21 C5 1D                    ld hl, DECIMAL_NUMS_8BIT
+     626   00:1D91                      .loop_start
+     627   00:1D91  0E 00                       ld c, 0
+     628   00:1D93  5F                          ld e, a
+     629   00:1D94  7E                          ld a, (hl)
+     630   00:1D95  FE 01                       cp 1
+     631   00:1D97  20 01                       jr nz, .not_last_digit
+     632   00:1D99  04                          inc b   ; last digit, must print even on zero, so we set b to 1 to force printing of the last digit
+     633   00:1D9A                      .not_last_digit:
+     634   00:1D9A  57                          ld d, a
+     635   00:1D9B  7B                          ld a, e
+     636   00:1D9C                      .sub_loop:
+     637   00:1D9C  0C                          inc c
+     638   00:1D9D  92                          sub d
+     639   00:1D9E  30 FC                       jr nc, .sub_loop
+     640   00:1DA0  0D                          dec c
+     641   00:1DA1  82                          add a, d
+     642   00:1DA2  5F                          ld e, a
+     643   00:1DA3  AF                          xor a
+     644   00:1DA4  B9                          cp c
+     645   00:1DA5  20 06                       jr nz, .print_digit_inc_b
+     646   00:1DA7  78                          ld a, b
+     647   00:1DA8  B7                          or a
+     648   00:1DA9  20 03                       jr nz, .print_digit
+     649   00:1DAB  18 0B                       jr .skip_digit_print
+     650   00:1DAD                      .print_digit_inc_b:
+     651   00:1DAD  04                          inc b
+     652   00:1DAE                      .print_digit:
+     653   00:1DAE  79                          ld a, c
+     654   00:1DAF  C6 30                       add a, "0"
+     655   00:1DB1  C5                          push bc
+     656   00:1DB2  D5                          push de
+     657   00:1DB3  CD 6F 1D                    call print_char
+     658   00:1DB6  D1                          pop de
+     659   00:1DB7  C1                          pop bc
+     660   00:1DB8                      .skip_digit_print
+     661   00:1DB8  7A                          ld a, d
+     662   00:1DB9  FE 01                       cp 1
+     663   00:1DBB  28 04                       jr z, .loop_done
+     664   00:1DBD  23                          inc hl
+     665   00:1DBE  7B                          ld a, e
+     666   00:1DBF  18 D0                       jr .loop_start
+     667   00:1DC1                      .loop_done:
+     668   00:1DC1                      
+     669   00:1DC1  E1                          pop hl
+     670   00:1DC2  D1                          pop de
+     671   00:1DC3  C1                          pop bc
+     672   00:1DC4  C9                          ret
+     673   00:1DC5                      DECIMAL_NUMS_8BIT:        
+     674   00:1DC5  64                          DB      100 
+     675   00:1DC6  0A                          DB      10 
+     676   00:1DC7  01                          DB      1
+     677   00:1DC8                      
+     678   00:1DC8                      
+     679   00:1DC8                      base_port_addr_str:
+     680   00:1DC8                      	dz "Base IO addr: "
+     680   00:1DC8  42 61 73 65 20 49 4F 20 61 64 64 72 3A 20 00 
+     681   00:1DD7                      header_str:
+     682   00:1DD7                      	dz "STAT   BTN     dX      dY      (dw)    SPD"
+     682   00:1DD7  53 54 41 54 20 20 20 42 54 4E 20 20 20 20 20 64 
+     682   00:1DE7  58 20 20 20 20 20 20 64 59 20 20 20 20 20 20 28 
+     682   00:1DF7  64 77 29 20 20 20 20 53 50 44 00 
+     683   00:1E02                      erase_str:
+     684   00:1E02  20 20 20 00         	db "   ", 0
+     685   00:1E06                      
+     686   00:1E06                      border_on:
+     687   00:1E06                      	db 137, 155, 153, 19, 19, 19, 24
+     687   00:1E06  89 9B 99 13 13 13 18 
+     688   00:1E0D                      	db 139,   4, 139, 19, 19, 19, 24
+     688   00:1E0D  8B 04 8B 13 13 13 18 
+     689   00:1E14  8A 9B 9A 00         	db 138, 155, 154,  0
+     690   00:1E18                      
+     691   00:1E18                      border_off:
+     692   00:1E18                      	db  32,  32,  32, 19, 19, 19, 24
+     692   00:1E18  20 20 20 13 13 13 18 
+     693   00:1E1F                      	db  32,   4,  32, 19, 19, 19, 24
+     693   00:1E1F  20 04 20 13 13 13 18 
+     694   00:1E26  20 20 20 00         	db  32,  32,  32,  0
+     695   00:1E2A                      	
+     696   00:1E2A                      	
+     697   00:1E2A                      sprite_arrow:
+     698   00:1E2A  FF FF 80            	db $ff,$ff,$80
+     699   00:1E2D  FF FF 00            	db $ff,$ff,$00
+     700   00:1E30  C0 06 00            	db $c0,$06,$00
+     701   00:1E33  C0 0C 00            	db $c0,$0c,$00
+     702   00:1E36  CE 18 00            	db $ce,$18,$00
+     703   00:1E39  CC 30 00            	db $cc,$30,$00
+     704   00:1E3C  C8 30 00            	db $c8,$30,$00
+     705   00:1E3F  C0 18 00            	db $c0,$18,$00
+     706   00:1E42  C0 0C 00            	db $c0,$0c,$00
+     707   00:1E45  C3 06 00            	db $c3,$06,$00
+     708   00:1E48  C7 83 00            	db $c7,$83,$00
+     709   00:1E4B  CC C1 80            	db $cc,$c1,$80
+     710   00:1E4E  D8 60 C0            	db $d8,$60,$c0
+     711   00:1E51  F0 30 60            	db $f0,$30,$60
+     712   00:1E54  E0 18 30            	db $e0,$18,$30
+     713   00:1E57  C0 0C 18            	db $c0,$0c,$18
+     714   00:1E5A  00 06 30            	db $00,$06,$30
+     715   00:1E5D  00 03 60            	db $00,$03,$60
+     716   00:1E60  00 01 C0            	db $00,$01,$c0
+     717   00:1E63  00 00 00            	db $00,$00,$00
+     718   00:1E66  00 00 00            	db $00,$00,$00
+     719   00:1E69                      			
+     720   00:1E69                      BASE_PORT:
+     721   00:1E69  00                    db 00
+     722   00:1E6A                      BASE_PORT2:
+     723   00:1E6A  00                    db 00
+     724   00:1E6B                      orig_jump:
+     725   00:1E6B  00 00 00              db 00, 00, 00
+     726   00:1E6E                        
+     727   00:1E6E                      actual_port_values:
+     728   00:1E6E  00 (6)              	ds 6
+     729   00:1E74                      shadow_port_values:
+     730   00:1E74  00 (6)              	ds 6
+     731   00:1E7A                      prev_port_values:
+     732   00:1E7A  00 (6)              	ds 6
+     733   00:1E80                      
+     734   00:1E80                      actual_coords:
+     735   00:1E80                      actual_x:
+     736   00:1E80  80 00               	dw 128
+     737   00:1E82                      actual_y:
+     738   00:1E82  80 00               	dw 128
+     739   00:1E84                      
+     740   00:1E84                      shadow_coords:
+     741   00:1E84                      shadow_x:
+     742   00:1E84  00 00               	dw 0
+     743   00:1E86                      shadow_y:
+     744   00:1E86  00 00               	dw 0
+     745   00:1E88                      
+     746   00:1E88                      prev_coords:
+     747   00:1E88                      prev_x:
+     748   00:1E88  00 00               	dw 0
+     749   00:1E8A                      prev_y:
+     750   00:1E8A  00 00               	dw 0
+     751   00:1E8C                      p2_mem_store:
+     752   00:1E8C  00                  	db 0
+     753   00:1E8D                      prev_border_minus:
+     754   00:1E8D  00                  	db 0
+     755   00:1E8E                      prev_border_plus:
+     756   00:1E8E                      
+     757   00:1E8E                      PROGRAM_END:  
+
+    LABELS
+-------------------------------------------------
+00:00000B4F   BORDER_SHADOW
+00:00000000 X REG_SPRITE_X
+00:00000020 X REG_SPRITE_Y
+00:00000050   REG_SPRITE_PHASE
+00:00000070   REG_SPRITE_ENABLE
+00:00000080   REG_SPRITE_COLORMODE
+00:000000A0 X PPREG_SCREEN_VIDEOMODE
+00:000000B0   REG_MEMORY_P2
+00:000000D0   REG_USB_INIT
+00:0000000A   POSX_MINUS
+00:00000006   POSY_MINUS
+00:0000001E   POSX_PLUS
+00:00000006   POSY_PLUS
+00:000019EF   PROGRAM_START
+00:00001A21   quit
+00:00001A25   main_loop
+00:00001A3A   main_loop.port_check_loop
+00:00001AA9   main_loop.border_minus_drawn
+00:00001AD0   main_loop.might_be_pos_plus
+00:00001AFF   main_loop.border_plus_drawn
+00:00001B22   main_loop.reset_borders
+00:00001B3A   main_loop.check_border_plus
+00:00001B50   main_loop.update_prev_values
+00:00001B63   main_loop.changed_port_value
+00:00001B6C   main_loop.add_8_loop
+00:00001B71   main_loop.b_ok
+00:00001B8D   setup
+00:00001BAC   setup.fill_prev_port_values_loop
+00:00001C47   my_isr
+00:00001C5D   my_isr.loop
+00:00001C8D   my_isr.sub_x
+00:00001CA0   my_isr.gtzerox
+00:00001CAC   my_isr.calc_y
+00:00001CCD   my_isr.sub_y
+00:00001CE0   my_isr.gtzeroy
+00:00001CEC   my_isr.calc_done
+00:00001D0E   my_isr.isr_done
+00:00001D1A   teardown
+00:00001D3D   teardown.done
+00:00001D3E   print_cstring
+00:00001D40   print_cstring.print_cstring_loop
+00:00001D4A   print_cstring.cstring_done
+00:00001D4D   print_hex_word
+00:00001D52   print_hex_byte
+00:00001D65   print_hex_digit
+00:00001D6D   print_hex_digit.alpha_chars
+00:00001D6F   print_char
+00:00001D73   print_newline
+00:00001D7A   print_newline.newline
+00:00001D7D   print_dec_byte
+00:00001D8C   print_dec_byte.positive_number
+00:00001D91   print_dec_byte.loop_start
+00:00001D9A   print_dec_byte.not_last_digit
+00:00001D9C   print_dec_byte.sub_loop
+00:00001DAD   print_dec_byte.print_digit_inc_b
+00:00001DAE   print_dec_byte.print_digit
+00:00001DB8   print_dec_byte.skip_digit_print
+00:00001DC1   print_dec_byte.loop_done
+00:00001DC5   DECIMAL_NUMS_8BIT
+00:00001DC8   base_port_addr_str
+00:00001DD7   header_str
+00:00001E02   erase_str
+00:00001E06   border_on
+00:00001E18   border_off
+00:00001E2A   sprite_arrow
+00:00001E69   BASE_PORT
+00:00001E6A   BASE_PORT2
+00:00001E6B   orig_jump
+00:00001E6E   actual_port_values
+00:00001E74   shadow_port_values
+00:00001E7A   prev_port_values
+00:00001E80   actual_coords
+00:00001E80   actual_x
+00:00001E82   actual_y
+00:00001E84   shadow_coords
+00:00001E84   shadow_x
+00:00001E86   shadow_y
+00:00001E88 X prev_coords
+00:00001E88 X prev_x
+00:00001E8A X prev_y
+00:00001E8C   p2_mem_store
+00:00001E8D   prev_border_minus
+00:00001E8E   prev_border_plus
+00:00001E8E   PROGRAM_END
+
+
+ Output: sms-as.cas
+-------------------------------------------------
+
+ Page: 00
+  Org: 0000195F  Size: *  Used: 0000052F
+
+   Address   Length Align   Label
+   0000195F    1327         PROGRAM_START

@@ -1,0 +1,996 @@
+Sjasm Z80 Assembler v0.42c - www.xl2s.tk             [2026.10.09 - 21:01:42]
+
+tr-demo.asm
+Errors: 0
+
+       1   00:195F  (00:0090)           REG_SPRITE_ENABLE_LOW equ $90
+       2   00:195F  (00:0091)           REG_SPRITE_ENABLE_HIGH equ $91
+       3   00:195F  (00:0092)           REG_SPRITE_FOREGROUND_LOW equ $92
+       4   00:195F  (00:0093)           REG_SPRITE_FOREGROUND_HIGH equ $93
+       5   00:195F                      
+       6   00:195F  (00:00A0)           REG_SCREEN_VIDEOMODE equ $A0
+       7   00:195F  (00:00A4)           REG_SCREEN_BITMAP_BASEADDR equ $A4
+       8   00:195F  (00:00A8)           REG_SCREEN_Y equ $A8
+       9   00:195F  (00:00B0)           REG_MEMORY_P2 equ $B0
+      10   00:195F  (00:00C0)           REG_FUNCTION_EXEC equ $C0
+      11   00:195F  (00:00C1)           REG_FUNCTION_PARAM_START equ $C1
+      12   00:195F  (00:00C2)           REG_FUNCTION_RESULT equ $C2
+      13   00:195F  (00:00C6)           REG_FUNCTION_MULTIEXEC equ $C6
+      14   00:195F  (00:00C7)           REG_FUNCTION_BITMAP_BASE equ $C7
+      15   00:195F                      
+      16   00:195F  (00:0001)           OP_ADD equ $01
+      17   00:195F  (00:0002)           OP_SUB equ $02
+      18   00:195F  (00:0003)           OP_MUL equ $03
+      19   00:195F  (00:0004)           OP_DIV equ $04
+      20   00:195F  (00:000A)           OP_SIN equ $0a
+      21   00:195F  (00:000B)           OP_COS equ $0b
+      22   00:195F  (00:000F)           OP_ROUND equ $0f
+      23   00:195F                      
+      24   00:195F  (00:0040)           T_UINT8 equ $40
+      25   00:195F  (00:0041)           T_INT16 equ $41
+      26   00:195F  (00:0042)           T_INT32 equ $42
+      27   00:195F  (00:0043)           T_TVCFLOAT equ $43
+      28   00:195F  (00:0044)           T_FLOAT equ $44
+      29   00:195F  (00:0045)           T_VARREF equ $45
+      30   00:195F                      
+      31   00:195F  (00:0080)           CONST_2PI equ $80
+      32   00:195F  (00:0083)           CONST_0_001 equ $83
+      33   00:195F                      
+      34   00:195F  (00:0001)           FUNC_CLEAR_BITMAP equ $01
+      35   00:195F  (00:000B)           FUNC_MEMMOVE_SHORT equ $0b
+      36   00:195F  (00:0016)           FUNC_SET_PEN_COLOR equ $16
+      37   00:195F  (00:0025)           FUNC_EVAL_ME equ $25 ; 37 dec - evaluate mathematical expression
+      38   00:195F  (00:0026)           FUNC_DRAW_TRI equ $26 ; 38 dec - draw triangle
+      39   00:195F                      
+      40   00:195F  (00:8000)           ADDR_FUNC_EXEC equ $8000
+      41   00:195F  (00:8200)           ADDR_EVAL_MATH equ $8200
+      42   00:195F  (00:8400)           ADDR_DRAW_TRIS equ $8400
+      43   00:195F  (00:81F0)           ADDR_VAR_I equ $81F0
+      44   00:195F                      
+      45   00:195F  (00:0B4F)           BORDER equ $0B4F
+      46   00:195F                      
+      47   00:195F  (00:0008)           COUNTER_RESET equ 8
+      48   00:195F                      
+      49   00:195F  (00:0008)           MEMPAGE2 equ 8
+      50   00:195F                      
+      51   00:195F                      
+      52   00:195F                      	org $19ef - $90
+      53   00:195F                      	include "cas-header.asm"
+       1.  00:195F                      ; fileType - $01 buffered, $11 non-buffered
+       2.  00:195F  11                    db $11
+       3.  00:1960                      
+       4.  00:1960                      ; copyprotect - $00 no protection
+       5.  00:1960  00                    db $00
+       6.  00:1961                      
+       7.  00:1961                      ; number of blocks, lo-hi order. Program size in $80 sized blocks
+       8.  00:1961  0B 00                 dw ((PROGRAM_END - PROGRAM_START - 1) / $80 ) + 1
+       9.  00:1963                      
+      10.  00:1963                      ; lastblock bytes (0-$7f)
+      11.  00:1963  67                    db (PROGRAM_END - PROGRAM_START) % $80
+      12.  00:1964                      
+      13.  00:1964                      ; filled with zeroes
+      14.  00:1964  00 (123)              ds ($80-$05)
+      15.  00:19DF                      
+      16.  00:19DF                      ; always $00
+      17.  00:19DF  00                    db $00
+      18.  00:19E0                      
+      19.  00:19E0                      ; type of file: 01h program file, $00 data file
+      20.  00:19E0  01                    db $01
+      21.  00:19E1                      
+      22.  00:19E1                      ; program size in bytes lo/hi order
+      23.  00:19E1  67 05                 dw (PROGRAM_END - PROGRAM_START)
+      24.  00:19E3                      
+      25.  00:19E3                      ; autorun if $ff
+      26.  00:19E3  FF                    db $FF
+      27.  00:19E4                      
+      28.  00:19E4                      ; always $00
+      29.  00:19E4  00 (11)               ds ($90-$85)
+      54   00:19EF                      PROGRAM_START:
+      55   00:19EF                      	include "basic-header.asm"
+       1.  00:19EF                              org     19efh
+       2.  00:19EF  0E 0A 00 DD                 db      0eh,0ah,00h,0ddh
+       3.  00:19F3  55 53 52                    db      "USR"
+       4.  00:19F6  96                          db      96h
+       5.  00:19F7  36 36 35 36                 db      "6656"
+       6.  00:19FB  95 FF 00 00 00              db      95h,0ffh,00h,00h,00h
+      56   00:1A00                      	org $1a00
+      57   00:1A00                      
+      58   00:1A00  CD 43 1B            	call set_base_port
+      59   00:1A03  C0                  	ret nz
+      60   00:1A04                      
+      61   00:1A04  21 26 1A            	ld hl, base_port_addr_str
+      62   00:1A07  CD 91 1B            	call print_cstring
+      63   00:1A0A  3A 53 1F            	ld a, (BASE_PORT)
+      64   00:1A0D  CD A7 1B            	call print_hex_byte
+      65   00:1A10  CD C8 1B            	call print_newline
+      66   00:1A13                      
+      67   00:1A13  CD 91 1A            	call setup
+      68   00:1A16                      
+      69   00:1A16                      .loop
+      70   00:1A16  F7                  	rst $30
+      71   00:1A17  93                  	db $93
+      72   00:1A18  79                  	ld a, c
+      73   00:1A19  FE FF               	cp $ff
+      74   00:1A1B  20 F9               	jr nz, .loop
+      75   00:1A1D                      	
+      76   00:1A1D  F7                  	rst $30
+      77   00:1A1E  91                  	db $91
+      78   00:1A1F                      
+      79   00:1A1F  CD 45 1A            	call teardown
+      80   00:1A22                      	
+      81   00:1A22  21 00 00            	ld hl, 0
+      82   00:1A25  C9                  	ret
+      83   00:1A26                      
+      84   00:1A26                      base_port_addr_str:
+      85   00:1A26                      	dz "Base IO addr: "
+      85   00:1A26  42 61 73 65 20 49 4F 20 61 64 64 72 3A 20 00 
+      86   00:1A35                      
+      87   00:1A35                      quit_with_error:
+      88   00:1A35  3A 53 1F            	ld a, (BASE_PORT)
+      89   00:1A38  4F                  	ld c, a
+      90   00:1A39  3E A0               	ld a, REG_SCREEN_VIDEOMODE
+      91   00:1A3B  ED 79               	out (c), a
+      92   00:1A3D  0C                  	inc c
+      93   00:1A3E  AF                  	xor a
+      94   00:1A3F  ED 79               	out (c), a
+      95   00:1A41  21 FF FF            	ld hl, -1
+      96   00:1A44  C9                  	ret
+      97   00:1A45                      
+      98   00:1A45                      teardown:
+      99   00:1A45  F3                  	di
+     100   00:1A46  2A 79 1C            	ld hl, (MY_IRQ.jump_out+1)
+     101   00:1A49  22 3E 00            	ld ($003e), hl
+     102   00:1A4C                      	
+     103   00:1A4C  3E 0E               	ld a, 14
+     104   00:1A4E  D3 70               	out ($70), a
+     105   00:1A50  3E 0E               	ld a, 14
+     106   00:1A52  D3 71               	out ($71), a
+     107   00:1A54  FB                  	ei
+     108   00:1A55                      
+     109   00:1A55  3A 53 1F            	ld a, (BASE_PORT)
+     110   00:1A58  4F                  	ld c, a
+     111   00:1A59  3E A0               	ld a, REG_SCREEN_VIDEOMODE
+     112   00:1A5B  ED 79               	out (c), a
+     113   00:1A5D  0C                  	inc c
+     114   00:1A5E  AF                  	xor a
+     115   00:1A5F  ED 79               	out (c), a
+     116   00:1A61  0D                  	dec c
+     117   00:1A62                      	
+     118   00:1A62  3E B0               	ld a, REG_MEMORY_P2
+     119   00:1A64  ED 79               	out (c), a
+     120   00:1A66  0C                  	inc c
+     121   00:1A67  3A 55 1F            	ld a, (ORIG_MEMPAGE)
+     122   00:1A6A  ED 79               	out (c), a
+     123   00:1A6C  0D                  	dec c
+     124   00:1A6D                      	
+     125   00:1A6D  3E C7               	ld a, REG_FUNCTION_BITMAP_BASE
+     126   00:1A6F  ED 79               	out (c), a
+     127   00:1A71  0C                  	inc c
+     128   00:1A72  3E FF               	ld a, $FF
+     129   00:1A74  ED 79               	out (c), a
+     130   00:1A76  0D                  	dec c
+     131   00:1A77                      	
+     132   00:1A77  3E A4               	ld a, REG_SCREEN_BITMAP_BASEADDR
+     133   00:1A79  ED 79               	out (c), a
+     134   00:1A7B  0C                  	inc c
+     135   00:1A7C  3E 01               	ld a, $01
+     136   00:1A7E  ED 79               	out (c), a
+     137   00:1A80  0D                  	dec c
+     138   00:1A81                      
+     139   00:1A81                      	
+     140   00:1A81  AF                  	xor a
+     141   00:1A82  3A 00 BC            	ld a, ($BC00)
+     142   00:1A85  21 00 BC            	ld hl, $BC00
+     143   00:1A88  11 01 BC            	ld de, $BC01
+     144   00:1A8B  01 FF 03            	ld bc, $03FF
+     145   00:1A8E  ED B0               	ldir
+     146   00:1A90                      	
+     147   00:1A90  C9                  	ret
+     148   00:1A91                      
+     149   00:1A91                      setup:
+     150   00:1A91                      	; port increment set to 0 for IRQs
+     151   00:1A91  3A 53 1F            	ld a, (BASE_PORT)
+     152   00:1A94  C6 06               	add a, 6
+     153   00:1A96  4F                  	ld c, a
+     154   00:1A97  AF                  	xor a
+     155   00:1A98  ED 79               	out (c), a
+     156   00:1A9A                      	
+     157   00:1A9A                      
+     158   00:1A9A  3A 53 1F                ld a, (BASE_PORT)
+     159   00:1A9D  4F                  	ld c, a
+     160   00:1A9E                      	
+     161   00:1A9E                      	; port increment set to 0
+     162   00:1A9E  0C                  	inc c
+     163   00:1A9F  0C                  	inc c
+     164   00:1AA0  AF                  	xor a
+     165   00:1AA1  ED 79               	out (c), a
+     166   00:1AA3  0D                  	dec c
+     167   00:1AA4  0D                  	dec c
+     168   00:1AA5                      	
+     169   00:1AA5                      	; parameter is read from $8000
+     170   00:1AA5  3E C1               	ld a, REG_FUNCTION_PARAM_START
+     171   00:1AA7  ED 79               	out (c), a
+     172   00:1AA9  AF                  	xor a
+     173   00:1AAA  0C                  	inc c
+     174   00:1AAB  ED 79               	out (c), a
+     175   00:1AAD  0D                  	dec c
+     176   00:1AAE                      	
+     177   00:1AAE                      	; memory mapping set to page 4 -> 8000-bfff
+     178   00:1AAE  3E B0               	ld a, REG_MEMORY_P2
+     179   00:1AB0  ED 79               	out (c), a
+     180   00:1AB2  0C                  	inc c
+     181   00:1AB3  ED 78               	in a, (c)
+     182   00:1AB5  32 55 1F            	ld (ORIG_MEMPAGE), a
+     183   00:1AB8  3E 08               	ld a, MEMPAGE2
+     184   00:1ABA  ED 79               	out (c), a
+     185   00:1ABC  0D                  	dec c
+     186   00:1ABD                      	
+     187   00:1ABD  3E C0               	ld a, REG_FUNCTION_EXEC
+     188   00:1ABF  ED 79               	out (c), a
+     189   00:1AC1  0C                  	inc C
+     190   00:1AC2  3E 01               	ld a, FUNC_CLEAR_BITMAP
+     191   00:1AC4  ED 79               	out (c), a
+     192   00:1AC6  CD D2 1B            	call wait_for_func_finish
+     193   00:1AC9                      	
+     194   00:1AC9  3E C0               	ld a, REG_FUNCTION_EXEC
+     195   00:1ACB  ED 79               	out (c), a
+     196   00:1ACD  0C                  	inc c
+     197   00:1ACE  3E 0F               	ld a, 15
+     198   00:1AD0  32 00 80            	ld ($8000), a
+     199   00:1AD3  3E 16               	ld a, FUNC_SET_PEN_COLOR
+     200   00:1AD5  ED 79               	out (c), a
+     201   00:1AD7  CD D2 1B            	call wait_for_func_finish
+     202   00:1ADA                      	
+     203   00:1ADA                      	; set screen to gfx
+     204   00:1ADA  3E A0               	ld a, REG_SCREEN_VIDEOMODE
+     205   00:1ADC  ED 79               	out (c), a
+     206   00:1ADE  3E 03               	ld a, 3
+     207   00:1AE0  0C                  	inc c
+     208   00:1AE1  ED 79               	out (c), a
+     209   00:1AE3  0D                  	dec c
+     210   00:1AE4                      	
+     211   00:1AE4                      	; hide sprites
+     212   00:1AE4                      ;	ld a, REG_SPRITE_ENABLE_LOW
+     213   00:1AE4                      ;	out (c), a
+     214   00:1AE4                      ;	xor a
+     215   00:1AE4                      ;	inc c
+     216   00:1AE4                      ;	out (c), a
+     217   00:1AE4                      ;	dec c
+     218   00:1AE4                      	
+     219   00:1AE4                      ;	ld a, REG_SPRITE_ENABLE_HIGH
+     220   00:1AE4                      ;	out (c), a
+     221   00:1AE4                      ;	xor a
+     222   00:1AE4                      ;	inc c
+     223   00:1AE4                      ;	out (c), a
+     224   00:1AE4                      ;	dec c
+     225   00:1AE4                      	
+     226   00:1AE4                      ;	ld a, REG_SPRITE_FOREGROUND_LOW
+     227   00:1AE4                      ;	out (c), a
+     228   00:1AE4                      ;	ld a, $ff
+     229   00:1AE4                      ;	inc c
+     230   00:1AE4                      ;	out (c), a
+     231   00:1AE4                      ;	dec c
+     232   00:1AE4                      	
+     233   00:1AE4                      ;	ld a, REG_SPRITE_FOREGROUND_HIGH
+     234   00:1AE4                      ;	out (c), a
+     235   00:1AE4                      ;	ld a, $ff
+     236   00:1AE4                      ;	inc c
+     237   00:1AE4                      ;	out (c), a
+     238   00:1AE4                      ;	dec c
+     239   00:1AE4                      
+     240   00:1AE4                      	
+     241   00:1AE4                      	
+     242   00:1AE4  21 60 1D            	ld hl, CALCXY
+     243   00:1AE7  11 00 82            	ld de, ADDR_EVAL_MATH
+     244   00:1AEA  01 8A 01            	ld bc, CALCXY_END - CALCXY
+     245   00:1AED  ED B0               	ldir
+     246   00:1AEF                      	
+     247   00:1AEF  21 EA 1E            	ld hl, DRAW_TRI
+     248   00:1AF2  11 00 84            	ld de, ADDR_DRAW_TRIS
+     249   00:1AF5  01 2D 00            	ld bc, DRAW_TRI_END - DRAW_TRI
+     250   00:1AF8  ED B0               	ldir
+     251   00:1AFA                      	
+     252   00:1AFA  21 17 1F            	ld hl, FUNC_EXEC
+     253   00:1AFD  11 00 80            	ld de, ADDR_FUNC_EXEC
+     254   00:1B00  01 08 00            	ld bc, FUNC_EXEC_END - FUNC_EXEC
+     255   00:1B03  ED B0               	ldir
+     256   00:1B05                      
+     257   00:1B05  3E 41               	ld a, T_INT16
+     258   00:1B07  32 F0 81            	ld (ADDR_VAR_I), a
+     259   00:1B0A  21 00 00            	ld hl, 0
+     260   00:1B0D  22 F1 81            	ld (ADDR_VAR_I + 1), hl
+     261   00:1B10                      	
+     262   00:1B10  21 1F 1F            	ld hl, COLORS
+     263   00:1B13  22 50 1F            	ld (COLOR_P), hl
+     264   00:1B16                      	
+     265   00:1B16  3E 08               	ld a, COUNTER_RESET
+     266   00:1B18  32 52 1F            	ld (COUNTER), a
+     267   00:1B1B                      	
+     268   00:1B1B  F3                  	di
+     269   00:1B1C  3E 0E               	ld a, 14
+     270   00:1B1E  D3 70               	out ($70), a
+     271   00:1B20  3E 04               	ld a, 4
+     272   00:1B22  D3 71               	out ($71), a
+     273   00:1B24                      	
+     274   00:1B24  3E 01               	ld a, 1
+     275   00:1B26  32 54 1F            	ld (IRQ_NUM), a
+     276   00:1B29  3E 00               	ld a, 0
+     277   00:1B2B  32 3B 1C            	ld (TARGET_BITMAP), a
+     278   00:1B2E                      
+     279   00:1B2E                      	
+     280   00:1B2E  2A 3E 00            	ld hl, ($003e)
+     281   00:1B31  22 79 1C            	ld (MY_IRQ.jump_out + 1), hl
+     282   00:1B34  21 3C 1C            	ld hl, MY_IRQ
+     283   00:1B37  22 3E 00            	ld ($003e), hl
+     284   00:1B3A  FB                  	ei
+     285   00:1B3B                      	
+     286   00:1B3B  C9                  	ret
+     287   00:1B3C                      	
+     288   00:1B3C                      id_string:
+     289   00:1B3C                        db 6, "256k++"
+     289   00:1B3C  06 32 35 36 6B 2B 2B 
+     290   00:1B43                      set_base_port:
+     291   00:1B43  21 40 00            	ld hl, $0040
+     292   00:1B46                      .find_loop
+     293   00:1B46  E5                  	push hl
+     294   00:1B47  11 3C 1B            	ld de, id_string
+     295   00:1B4A  06 07               	ld b, 7
+     296   00:1B4C                      
+     297   00:1B4C  CD 72 1B            	call .cmp_loop
+     298   00:1B4F  E1                  	pop hl
+     299   00:1B50  28 12               	jr z, .id_found
+     300   00:1B52  11 30 00            	ld de, $0030
+     301   00:1B55  19                  	add hl, de
+     302   00:1B56  3E 01               	ld a, $01
+     303   00:1B58  BC                  	cp h
+     304   00:1B59  20 EB               	jr nz, .find_loop
+     305   00:1B5B  21 7B 1B            	ld hl, .no_id_found_str
+     306   00:1B5E  CD 91 1B            	call print_cstring
+     307   00:1B61  AF                  	xor a
+     308   00:1B62  3C                  	inc a
+     309   00:1B63  C9                  	ret
+     310   00:1B64                      
+     311   00:1B64                      .id_found:
+     312   00:1B64  7D                  	LD      A,L
+     313   00:1B65  D6 10               	SUB     $10 
+     314   00:1B67  E6 C0               	AND     $C0 ; 0x00, 0x40, 0x80, 0xc0
+     315   00:1B69  0F                  	RRCA     
+     316   00:1B6A  0F                  	RRCA     ; 0x00, 0x10, 0x20, 0x30
+     317   00:1B6B  C6 10               	ADD     A,$10
+     318   00:1B6D  32 53 1F            	LD      (BASE_PORT),A
+     319   00:1B70  AF                  	xor a
+     320   00:1B71  C9                  	ret
+     321   00:1B72                        
+     322   00:1B72                      .cmp_loop:	
+     323   00:1B72  1A                  	ld a, (de)
+     324   00:1B73  BE                  	cp (hl)
+     325   00:1B74  C0                  	ret nz
+     326   00:1B75  23                  	inc hl
+     327   00:1B76  13                  	inc de
+     328   00:1B77  10 F9               	djnz .cmp_loop
+     329   00:1B79  AF                  	xor a
+     330   00:1B7A  C9                  	ret
+     331   00:1B7B                      .no_id_found_str:
+     332   00:1B7B                        dz "TVC 256k++ not found!"  
+     332   00:1B7B  54 56 43 20 32 35 36 6B 2B 2B 20 6E 6F 74 20 66 
+     332   00:1B8B  6F 75 6E 64 21 00 
+     333   00:1B91                      
+     334   00:1B91                      print_cstring:       
+     335   00:1B91  C5                  	push bc
+     336   00:1B92  F5                  	push af
+     337   00:1B93                      .print_cstring_loop:
+     338   00:1B93  4E                  	LD      c,(hl) 
+     339   00:1B94  AF                  	XOR     a 
+     340   00:1B95  B9                  	CP      c 
+     341   00:1B96  28 07               	JR      z,.cstring_done 
+     342   00:1B98  E5                  	PUSH    hl 
+     343   00:1B99  F7                  	RST     30h 
+     344   00:1B9A  21                  	DB      $21 
+     345   00:1B9B  E1                  	POP     hl 
+     346   00:1B9C  23                  	INC     hl 
+     347   00:1B9D  18 F4               	JR      .print_cstring_loop
+     348   00:1B9F                      .cstring_done:
+     349   00:1B9F  F1                  	pop af
+     350   00:1BA0  C1                  	pop bc
+     351   00:1BA1  C9                  	RET
+     352   00:1BA2                      print_hex_word:
+     353   00:1BA2  7C                  	ld a, h
+     354   00:1BA3  CD A7 1B            	call print_hex_byte
+     355   00:1BA6  7D                  	ld a, l
+     356   00:1BA7                      print_hex_byte:      
+     357   00:1BA7  C5                  	PUSH    BC 
+     358   00:1BA8  F5                  	PUSH    AF 
+     359   00:1BA9  0F                  	RRCA     
+     360   00:1BAA  0F                  	RRCA     
+     361   00:1BAB  0F                  	RRCA     
+     362   00:1BAC  0F                  	RRCA     
+     363   00:1BAD  E6 0F               	AND     $0F 
+     364   00:1BAF  CD BA 1B            	CALL    print_hex_digit
+     365   00:1BB2  F1                  	POP     AF 
+     366   00:1BB3  E6 0F               	AND     $0F 
+     367   00:1BB5  CD BA 1B            	CALL    print_hex_digit
+     368   00:1BB8  C1                  	POP     BC 
+     369   00:1BB9  C9                  	RET      
+     370   00:1BBA                      print_hex_digit:     
+     371   00:1BBA  FE 0A               	CP      10 
+     372   00:1BBC  30 04               	JR      nc,.alpha_chars
+     373   00:1BBE  C6 30               	ADD     A,"0" 
+     374   00:1BC0  18 02               	JR      print_char
+     375   00:1BC2                      .alpha_chars:         
+     376   00:1BC2  C6 37               	ADD     A,"A" - 10 
+     377   00:1BC4                      print_char:
+     378   00:1BC4  4F                  	LD      C,A 
+     379   00:1BC5  F7                  	RST     30h 
+     380   00:1BC6  21                  	DB      $21
+     381   00:1BC7  C9                  	RET
+     382   00:1BC8                      	
+     383   00:1BC8                      print_newline:
+     384   00:1BC8  21 CF 1B            	ld hl, .newline
+     385   00:1BCB  CD 91 1B            	call print_cstring
+     386   00:1BCE  C9                  	ret
+     387   00:1BCF                      .newline
+     388   00:1BCF  0D 0A 00            	dz "\r\n"
+     389   00:1BD2                      	
+     390   00:1BD2                      wait_for_func_finish:
+     391   00:1BD2  06 05               	ld b, 5
+     392   00:1BD4                      .check_exec_status
+     393   00:1BD4  21 00 A0            	ld hl, $a000
+     394   00:1BD7                      .wait_loop:
+     395   00:1BD7  ED 78               	in a, (c)
+     396   00:1BD9  FE FF               	cp $FF
+     397   00:1BDB  28 10               	jr z, .check_result
+     398   00:1BDD  2B                  	dec hl
+     399   00:1BDE  7C                  	ld a, h
+     400   00:1BDF  B5                  	or l
+     401   00:1BE0  20 F5               	jr nz, .wait_loop
+     402   00:1BE2  10 F0               	djnz .check_exec_status
+     403   00:1BE4  21 07 1C            	ld hl, .operation_timed_out_str
+     404   00:1BE7  CD 91 1B            	call print_cstring
+     405   00:1BEA  AF                  	xor a
+     406   00:1BEB  3C                  	inc a
+     407   00:1BEC  C9                  	ret
+     408   00:1BED                      .check_result:
+     409   00:1BED  0D                      dec c
+     410   00:1BEE  3E C2               	ld a, REG_FUNCTION_RESULT
+     411   00:1BF0  ED 79               	out (c), a
+     412   00:1BF2  0C                  	inc c
+     413   00:1BF3  ED 78               	in a, (c)
+     414   00:1BF5  0D                  	dec c
+     415   00:1BF6  B7                  	or a
+     416   00:1BF7  C8                  	ret z
+     417   00:1BF8  F5                  	push af
+     418   00:1BF9  21 1C 1C            	ld hl, .failed_operation_str
+     419   00:1BFC  CD 91 1B            	call print_cstring
+     420   00:1BFF  F1                  	pop af
+     421   00:1C00  CD A7 1B            	call print_hex_byte
+     422   00:1C03  3E 01               	ld a, 1
+     423   00:1C05  B7                  	or a
+     424   00:1C06  C9                  	ret
+     425   00:1C07                      
+     426   00:1C07                      .operation_timed_out_str:
+     427   00:1C07                      	dz "Operation timed out!"
+     427   00:1C07  4F 70 65 72 61 74 69 6F 6E 20 74 69 6D 65 64 20 
+     427   00:1C17  6F 75 74 21 00 
+     428   00:1C1C                      .failed_operation_str:
+     429   00:1C1C                      	dz "Failed operation, error code: "
+     429   00:1C1C  46 61 69 6C 65 64 20 6F 70 65 72 61 74 69 6F 6E 
+     429   00:1C2C  2C 20 65 72 72 6F 72 20 63 6F 64 65 3A 20 00 
+     430   00:1C3B                      	
+     431   00:1C3B                      TARGET_BITMAP:
+     432   00:1C3B  00                  	db 0
+     433   00:1C3C                      	
+     434   00:1C3C                      MY_IRQ:
+     435   00:1C3C  3E 82               	ld a, $82
+     436   00:1C3E  D3 00               	out ($00), a
+     437   00:1C40                      	
+     438   00:1C40  E5                  	push hl
+     439   00:1C41  D5                  	push de
+     440   00:1C42  C5                  	push bc
+     441   00:1C43                      	
+     442   00:1C43  21 54 1F            	ld hl, IRQ_NUM
+     443   00:1C46  3E 01               	ld a, 1
+     444   00:1C48  96                  	sub (hl)
+     445   00:1C49  77                  	ld (hl), a
+     446   00:1C4A  20 2F               	jr nz, .do_the_calc
+     447   00:1C4C                      	
+     448   00:1C4C  21 3B 1C            	ld hl, TARGET_BITMAP
+     449   00:1C4F  3A 53 1F            	ld a, (BASE_PORT)
+     450   00:1C52  C6 04               	add 4
+     451   00:1C54  4F                  	ld c, a
+     452   00:1C55  3E C7               	ld a, REG_FUNCTION_BITMAP_BASE
+     453   00:1C57  ED 79               	out (c), a
+     454   00:1C59  0C                  	inc c
+     455   00:1C5A  7E                  	ld a, (hl)
+     456   00:1C5B  C6 02               	add 2
+     457   00:1C5D  ED 79               	out (c), a
+     458   00:1C5F  0D                  	dec c
+     459   00:1C60  3E A4               	ld a, REG_SCREEN_BITMAP_BASEADDR
+     460   00:1C62  ED 79               	out (c), a
+     461   00:1C64  0C                  	inc c
+     462   00:1C65  3E 01               	ld a, 1
+     463   00:1C67  96                  	sub (hl)
+     464   00:1C68  77                  	ld (hl), a
+     465   00:1C69  C6 02               	add 2
+     466   00:1C6B  ED 79               	out (c), a
+     467   00:1C6D                      	
+     468   00:1C6D  3E 0E               	ld a, 14
+     469   00:1C6F  D3 70               	out ($70), a
+     470   00:1C71  3E 04               	ld a, 4
+     471   00:1C73  D3 71               	out ($71), a
+     472   00:1C75                      	
+     473   00:1C75  C1                  	pop bc
+     474   00:1C76  D1                  	pop de
+     475   00:1C77  E1                  	pop hl
+     476   00:1C78                      .jump_out
+     477   00:1C78  C3 00 00            	jp $0000
+     478   00:1C7B                      
+     479   00:1C7B                      	
+     480   00:1C7B                      	
+     481   00:1C7B                      .do_the_calc
+     482   00:1C7B                      	
+     483   00:1C7B                      
+     484   00:1C7B                      ; calculate the new xy coords
+     485   00:1C7B  3E A0               	ld a, $A0
+     486   00:1C7D  D3 00               	out ($00), a
+     487   00:1C7F                      
+     488   00:1C7F  2A F1 81            	ld hl, (ADDR_VAR_I + 1)
+     489   00:1C82  23                  	inc hl
+     490   00:1C83  22 F1 81            	ld (ADDR_VAR_I + 1), hl
+     491   00:1C86                      	
+     492   00:1C86                      	
+     493   00:1C86  21 00 02            	ld hl, ADDR_EVAL_MATH - $8000
+     494   00:1C89  22 04 80            	ld (ADDR_FUNC_EXEC + (FE_SRC_ADDR - FUNC_EXEC) ), hl
+     495   00:1C8C                      	
+     496   00:1C8C  3A 53 1F            	ld a, (BASE_PORT)
+     497   00:1C8F  C6 04               	add 4
+     498   00:1C91  4F                  	ld c, a
+     499   00:1C92  3E C6               	ld a, REG_FUNCTION_MULTIEXEC
+     500   00:1C94  ED 79               	out (c), a
+     501   00:1C96  0C                  	inc c
+     502   00:1C97  3E 13               	ld a, 19
+     503   00:1C99  ED 79               	out (c), a
+     504   00:1C9B  CD D2 1B            	call wait_for_func_finish
+     505   00:1C9E                      	
+     506   00:1C9E                      ; copy calculated xy coords
+     507   00:1C9E  3E 88               	ld a, $88
+     508   00:1CA0  D3 00               	out ($00), a
+     509   00:1CA2                      	
+     510   00:1CA2  2A 0A 80            	ld hl, (ADDR_FUNC_EXEC + (FUNC_EXEC_END - FUNC_EXEC) + 2 + 0 * (CXY_1FUNC_END - CALCXY) )
+     511   00:1CA5  22 04 84            	ld (ADDR_DRAW_TRIS + (DT_XY_SOURCES - DRAW_TRI) + 0 * 2), hl
+     512   00:1CA8                      		
+     513   00:1CA8  2A 1D 80            	ld hl, (ADDR_FUNC_EXEC + (FUNC_EXEC_END - FUNC_EXEC) + 2 + 1 * (CXY_1FUNC_END - CALCXY) )
+     514   00:1CAB  22 06 84            	ld (ADDR_DRAW_TRIS + (DT_XY_SOURCES - DRAW_TRI) + 1 * 2), hl
+     515   00:1CAE                      	
+     516   00:1CAE  2A 30 80            	ld hl, (ADDR_FUNC_EXEC + (FUNC_EXEC_END - FUNC_EXEC) + 2 + 2 * (CXY_1FUNC_END - CALCXY) )
+     517   00:1CB1  22 08 84            	ld (ADDR_DRAW_TRIS + (DT_XY_SOURCES - DRAW_TRI) + 2 * 2), hl
+     518   00:1CB4                      	
+     519   00:1CB4  2A 43 80            	ld hl, (ADDR_FUNC_EXEC + (FUNC_EXEC_END - FUNC_EXEC) + 2 + 3 * (CXY_1FUNC_END - CALCXY) )
+     520   00:1CB7  22 0A 84            	ld (ADDR_DRAW_TRIS + (DT_XY_SOURCES - DRAW_TRI) + 3 * 2), hl
+     521   00:1CBA                      	
+     522   00:1CBA  2A 56 80            	ld hl, (ADDR_FUNC_EXEC + (FUNC_EXEC_END - FUNC_EXEC) + 2 + 4 * (CXY_1FUNC_END - CALCXY) )
+     523   00:1CBD  22 0C 84            	ld (ADDR_DRAW_TRIS + (DT_XY_SOURCES - DRAW_TRI) + 4 * 2), hl
+     524   00:1CC0                      	
+     525   00:1CC0  2A 69 80            	ld hl, (ADDR_FUNC_EXEC + (FUNC_EXEC_END - FUNC_EXEC) + 2 + 5 * (CXY_1FUNC_END - CALCXY) )
+     526   00:1CC3  22 0E 84            	ld (ADDR_DRAW_TRIS + (DT_XY_SOURCES - DRAW_TRI) + 5 * 2), hl
+     527   00:1CC6                      	
+     528   00:1CC6                      	
+     529   00:1CC6  2A 7C 80            	ld hl, (ADDR_FUNC_EXEC + (FUNC_EXEC_END - FUNC_EXEC) + 2 + (TRIX10 - CALCXY) )
+     530   00:1CC9  22 12 84            	ld (ADDR_DRAW_TRIS + (DT_XY1 - DRAW_TRI) + 0 * 2), hl
+     531   00:1CCC                      	
+     532   00:1CCC  2A 8F 80            	ld hl, (ADDR_FUNC_EXEC + (FUNC_EXEC_END - FUNC_EXEC) + 2 + (TRIY10 - CALCXY) )
+     533   00:1CCF  22 14 84            	ld (ADDR_DRAW_TRIS + (DT_XY1 - DRAW_TRI) + 1 * 2), hl
+     534   00:1CD2                      	
+     535   00:1CD2  2A A2 80            	ld hl, (ADDR_FUNC_EXEC + (FUNC_EXEC_END - FUNC_EXEC) + 2 + (TRIX11 - CALCXY) )
+     536   00:1CD5  22 16 84            	ld (ADDR_DRAW_TRIS + (DT_XY1 - DRAW_TRI) + 2 * 2), hl
+     537   00:1CD8                      	
+     538   00:1CD8  2A BA 80            	ld hl, (ADDR_FUNC_EXEC + (FUNC_EXEC_END - FUNC_EXEC) + 2 + (TRIY11 - CALCXY) )
+     539   00:1CDB  22 18 84            	ld (ADDR_DRAW_TRIS + (DT_XY1 - DRAW_TRI) + 3 * 2), hl
+     540   00:1CDE                      	
+     541   00:1CDE  2A D2 80            	ld hl, (ADDR_FUNC_EXEC + (FUNC_EXEC_END - FUNC_EXEC) + 2 + (TRIX12 - CALCXY) )
+     542   00:1CE1  22 1A 84            	ld (ADDR_DRAW_TRIS + (DT_XY1 - DRAW_TRI) + 4 * 2), hl
+     543   00:1CE4                      	
+     544   00:1CE4  2A ED 80            	ld hl, (ADDR_FUNC_EXEC + (FUNC_EXEC_END - FUNC_EXEC) + 2 + (TRIY12 - CALCXY) )
+     545   00:1CE7  22 1C 84            	ld (ADDR_DRAW_TRIS + (DT_XY1 - DRAW_TRI) + 5 * 2), hl
+     546   00:1CEA                      	
+     547   00:1CEA                      	
+     548   00:1CEA  2A 08 81            	ld hl, (ADDR_FUNC_EXEC + (FUNC_EXEC_END - FUNC_EXEC) + 2 + (TRIX20 - CALCXY) )
+     549   00:1CED  22 20 84            	ld (ADDR_DRAW_TRIS + (DT_XY2 - DRAW_TRI) + 0 * 2), hl
+     550   00:1CF0                      	
+     551   00:1CF0  2A 1B 81            	ld hl, (ADDR_FUNC_EXEC + (FUNC_EXEC_END - FUNC_EXEC) + 2 + (TRIY20 - CALCXY) )
+     552   00:1CF3  22 22 84            	ld (ADDR_DRAW_TRIS + (DT_XY2 - DRAW_TRI) + 1 * 2), hl
+     553   00:1CF6                      	
+     554   00:1CF6  2A 2E 81            	ld hl, (ADDR_FUNC_EXEC + (FUNC_EXEC_END - FUNC_EXEC) + 2 + (TRIX21 - CALCXY) )
+     555   00:1CF9  22 24 84            	ld (ADDR_DRAW_TRIS + (DT_XY2 - DRAW_TRI) + 2 * 2), hl
+     556   00:1CFC                      	
+     557   00:1CFC  2A 46 81            	ld hl, (ADDR_FUNC_EXEC + (FUNC_EXEC_END - FUNC_EXEC) + 2 + (TRIY21 - CALCXY) )
+     558   00:1CFF  22 26 84            	ld (ADDR_DRAW_TRIS + (DT_XY2 - DRAW_TRI) + 3 * 2), hl
+     559   00:1D02                      	
+     560   00:1D02  2A 5E 81            	ld hl, (ADDR_FUNC_EXEC + (FUNC_EXEC_END - FUNC_EXEC) + 2 + (TRIX22 - CALCXY) )
+     561   00:1D05  22 28 84            	ld (ADDR_DRAW_TRIS + (DT_XY2 - DRAW_TRI) + 4 * 2), hl
+     562   00:1D08                      	
+     563   00:1D08  2A 79 81            	ld hl, (ADDR_FUNC_EXEC + (FUNC_EXEC_END - FUNC_EXEC) + 2 + (TRIY22 - CALCXY) )
+     564   00:1D0B  22 2A 84            	ld (ADDR_DRAW_TRIS + (DT_XY2 - DRAW_TRI) + 5 * 2), hl
+     565   00:1D0E                      	
+     566   00:1D0E                      	
+     567   00:1D0E  21 52 1F            	ld hl, COUNTER
+     568   00:1D11  35                  	dec (hl)
+     569   00:1D12  20 1D               	jr nz, .skip_color_scroll
+     570   00:1D14                      
+     571   00:1D14  3E 08               	ld a, COUNTER_RESET
+     572   00:1D16  32 52 1F            	ld (COUNTER), a
+     573   00:1D19                      	
+     574   00:1D19  2A 50 1F            	ld hl, (COLOR_P)
+     575   00:1D1C  7E                  	ld a, (hl)
+     576   00:1D1D  B7                  	or a
+     577   00:1D1E  20 04               	jr nz, .color_ok
+     578   00:1D20  21 1F 1F            	ld hl, COLORS
+     579   00:1D23  7E                  	ld a, (hl)
+     580   00:1D24                      .color_ok
+     581   00:1D24  23                  	inc hl
+     582   00:1D25  22 50 1F            	ld (COLOR_P), hl
+     583   00:1D28  32 10 84            	ld (ADDR_DRAW_TRIS + (DT_COLOR - DRAW_TRI) ), a
+     584   00:1D2B  32 1E 84            	ld (ADDR_DRAW_TRIS + (DT_COLOR1 - DRAW_TRI) ), a
+     585   00:1D2E  32 2C 84            	ld (ADDR_DRAW_TRIS + (DT_COLOR2 - DRAW_TRI) ), a
+     586   00:1D31                      	
+     587   00:1D31                      
+     588   00:1D31                      .skip_color_scroll
+     589   00:1D31                      
+     590   00:1D31                      ; draw triangle
+     591   00:1D31  3E 20               	ld a, $20
+     592   00:1D33  D3 00               	out ($00), a
+     593   00:1D35                      
+     594   00:1D35  21 00 04            	ld hl, ADDR_DRAW_TRIS - $8000
+     595   00:1D38  22 04 80            	ld (ADDR_FUNC_EXEC + (FE_SRC_ADDR - FUNC_EXEC) ), hl
+     596   00:1D3B                      	
+     597   00:1D3B  3E C6               	ld a, REG_FUNCTION_MULTIEXEC
+     598   00:1D3D  ED 79               	out (c), a
+     599   00:1D3F  0C                  	inc c
+     600   00:1D40  3E 06               	ld a, 6
+     601   00:1D42  ED 79               	out (c), a
+     602   00:1D44  CD D2 1B            	call wait_for_func_finish
+     603   00:1D47                      	
+     604   00:1D47                      .end_my_irq
+     605   00:1D47  3E 82               	ld a, $82
+     606   00:1D49  D3 00               	out ($00), a
+     607   00:1D4B                      
+     608   00:1D4B  3E 0E               	ld a, 14
+     609   00:1D4D  D3 70               	out ($70), a
+     610   00:1D4F  3E 0E               	ld a, 14
+     611   00:1D51  D3 71               	out ($71), a
+     612   00:1D53  3A 4F 0B            	ld a, (BORDER)
+     613   00:1D56                      
+     614   00:1D56  C1                  	pop bc
+     615   00:1D57  D1                  	pop de
+     616   00:1D58  E1                  	pop hl
+     617   00:1D59  D3 00               	out ($00), a
+     618   00:1D5B  F1                  	pop af
+     619   00:1D5C                      
+     620   00:1D5C  D3 07               	out ($07), a
+     621   00:1D5E  FB                  	ei
+     622   00:1D5F  C9                  	ret
+     623   00:1D60                      	
+     624   00:1D60  (00:0014)           XAMPL equ 20
+     625   00:1D60  (00:0014)           YAMPL equ 20
+     626   00:1D60                      
+     627   00:1D60  (00:0080)           X0 EQU 128
+     628   00:1D60  (00:0014)           Y0 EQU 20
+     629   00:1D60  (00:001E)           X1 EQU 30
+     630   00:1D60  (00:00DC)           Y1 EQU 220
+     631   00:1D60  (00:00E6)           X2 EQU 230
+     632   00:1D60  (00:00C8)           Y2 EQU 200
+     633   00:1D60                      
+     634   00:1D60  (00:001E)           X10 equ 30
+     635   00:1D60  (00:001E)           Y10 equ 30
+     636   00:1D60  (00:0023)           R1  equ 35
+     637   00:1D60  (00:002D)           RSPEED1 equ 45
+     638   00:1D60                      
+     639   00:1D60  (00:00DC)           X20 equ 220
+     640   00:1D60  (00:001E)           Y20 equ 30
+     641   00:1D60  (00:0019)           R2  equ 25
+     642   00:1D60  (00:0023)           RSPEED2 equ 35
+     643   00:1D60                      
+     644   00:1D60                      
+     645   00:1D60                      
+     646   00:1D60                      CALCXY:	; (6)
+     647   00:1D60                      ; x0  x0 .001 11 * VR * SIN 20 * + ROUND
+     648   00:1D60                      	db FUNC_EVAL_ME, T_UINT8, X0, CONST_0_001, T_UINT8, 11, OP_MUL, T_VARREF, LOW ADDR_VAR_I, ( HIGH ADDR_VAR_I ) - $80, MEMPAGE2 / 4, OP_MUL, OP_SIN, T_UINT8, XAMPL, OP_MUL, OP_ADD, OP_ROUND, 0
+     648   00:1D60  25 40 80 83 40 0B 03 45 F0 01 02 03 0A 40 14 03 
+     648   00:1D70  01 0F 00 
+     649   00:1D73                      ;	db FUNC_EVAL_ME, T_UINT8, X0, CONST_0_001, T_UINT8, 11, OP_MUL, T_INT16, 0, 0, OP_MUL, OP_SIN, T_UINT8, XAMPL, OP_MUL, OP_ADD, OP_ROUND, 0
+     650   00:1D73                      ;	db FUNC_EVAL_ME, T_UINT8, X0, CONST_2PI, CONST_0_001, OP_MUL, T_UINT8, 11, OP_MUL, T_UINT8, 5, OP_MUL, OP_SIN, T_UINT8, XAMPL, OP_MUL, OP_ADD, OP_ROUND, 0
+     651   00:1D73                      CXY_1FUNC_END	
+     652   00:1D73                      ; y0
+     653   00:1D73                      	db FUNC_EVAL_ME, T_UINT8, Y0, CONST_0_001, T_UINT8, 37, OP_MUL, T_VARREF, LOW ADDR_VAR_I, ( HIGH ADDR_VAR_I ) - $80, MEMPAGE2 / 4, OP_MUL, OP_COS, T_UINT8, YAMPL, OP_MUL, OP_ADD, OP_ROUND, 0
+     653   00:1D73  25 40 14 83 40 25 03 45 F0 01 02 03 0B 40 14 03 
+     653   00:1D83  01 0F 00 
+     654   00:1D86                      ;	db FUNC_EVAL_ME, T_UINT8, Y0, CONST_0_001, T_UINT8, 37, OP_MUL, T_INT16, 0, 0, OP_MUL, OP_COS, T_UINT8, YAMPL, OP_MUL, OP_ADD, OP_ROUND, 0
+     655   00:1D86                      ;	db FUNC_EVAL_ME, T_UINT8, Y0, CONST_2PI, CONST_0_001, OP_MUL, T_UINT8, 37, OP_MUL, T_UINT8, 5, OP_MUL, OP_COS, T_UINT8, YAMPL, OP_MUL, OP_ADD, OP_ROUND, 0
+     656   00:1D86                      ; x1
+     657   00:1D86                      	db FUNC_EVAL_ME, T_UINT8, X1, CONST_0_001, T_UINT8, 31, OP_MUL, T_VARREF, LOW ADDR_VAR_I, ( HIGH ADDR_VAR_I ) - $80, MEMPAGE2 / 4, OP_MUL, OP_SIN, T_UINT8, XAMPL, OP_MUL, OP_ADD, OP_ROUND, 0
+     657   00:1D86  25 40 1E 83 40 1F 03 45 F0 01 02 03 0A 40 14 03 
+     657   00:1D96  01 0F 00 
+     658   00:1D99                      ;	db FUNC_EVAL_ME, T_UINT8, X1, CONST_0_001, T_UINT8, 31, OP_MUL, T_INT16, 0, 0, OP_MUL, OP_SIN, T_UINT8, XAMPL, OP_MUL, OP_ADD, OP_ROUND, 0
+     659   00:1D99                      ;	db FUNC_EVAL_ME, T_UINT8, X1, CONST_2PI, CONST_0_001, OP_MUL, T_UINT8, 31, OP_MUL, T_UINT8, 5, OP_MUL, OP_SIN, T_UINT8, XAMPL, OP_MUL, OP_ADD, OP_ROUND, 0
+     660   00:1D99                      ; y1
+     661   00:1D99                      	db FUNC_EVAL_ME, T_UINT8, Y1, CONST_0_001, T_UINT8, 23, OP_MUL, T_VARREF, LOW ADDR_VAR_I, ( HIGH ADDR_VAR_I ) - $80, MEMPAGE2 / 4, OP_MUL, OP_COS, T_UINT8, YAMPL, OP_MUL, OP_ADD, OP_ROUND, 0
+     661   00:1D99  25 40 DC 83 40 17 03 45 F0 01 02 03 0B 40 14 03 
+     661   00:1DA9  01 0F 00 
+     662   00:1DAC                      ;	db FUNC_EVAL_ME, T_UINT8, Y1, CONST_0_001, T_UINT8, 23, OP_MUL, T_INT16, 0, 0, OP_MUL, OP_COS, T_UINT8, YAMPL, OP_MUL, OP_ADD, OP_ROUND, 0
+     663   00:1DAC                      ;	db FUNC_EVAL_ME, T_UINT8, Y1, CONST_2PI, CONST_0_001, OP_MUL, T_UINT8, 23, OP_MUL, T_UINT8, 5, OP_MUL, OP_COS, T_UINT8, YAMPL, OP_MUL, OP_ADD, OP_ROUND, 0
+     664   00:1DAC                      ; x2
+     665   00:1DAC                      	db FUNC_EVAL_ME, T_UINT8, X2, CONST_0_001, T_UINT8, 17, OP_MUL, T_VARREF, LOW ADDR_VAR_I, ( HIGH ADDR_VAR_I ) - $80, MEMPAGE2 / 4, OP_MUL, OP_SIN, T_UINT8, XAMPL, OP_MUL, OP_ADD, OP_ROUND, 0
+     665   00:1DAC  25 40 E6 83 40 11 03 45 F0 01 02 03 0A 40 14 03 
+     665   00:1DBC  01 0F 00 
+     666   00:1DBF                      ;	db FUNC_EVAL_ME, T_UINT8, X2, CONST_0_001, T_UINT8, 17, OP_MUL, T_INT16, 0, 0, OP_MUL, OP_SIN, T_UINT8, XAMPL, OP_MUL, OP_ADD, OP_ROUND, 0
+     667   00:1DBF                      ;	db FUNC_EVAL_ME, T_UINT8, X2, CONST_2PI, CONST_0_001, OP_MUL, T_UINT8, 17, OP_MUL, T_UINT8, 5, OP_MUL, OP_SIN, T_UINT8, XAMPL, OP_MUL, OP_ADD, OP_ROUND, 0
+     668   00:1DBF                      ; y2
+     669   00:1DBF                      	db FUNC_EVAL_ME, T_UINT8, Y2, CONST_0_001, T_UINT8, 29, OP_MUL, T_VARREF, LOW ADDR_VAR_I, ( HIGH ADDR_VAR_I ) - $80, MEMPAGE2 / 4, OP_MUL, OP_COS, T_UINT8, YAMPL, OP_MUL, OP_ADD, OP_ROUND, 0
+     669   00:1DBF  25 40 C8 83 40 1D 03 45 F0 01 02 03 0B 40 14 03 
+     669   00:1DCF  01 0F 00 
+     670   00:1DD2                      ;	db FUNC_EVAL_ME, T_UINT8, Y2, CONST_0_001, T_UINT8, 29, OP_MUL, T_INT16, 0, 0, OP_MUL, OP_COS, T_UINT8, YAMPL, OP_MUL, OP_ADD, OP_ROUND, 0
+     671   00:1DD2                      ;	db FUNC_EVAL_ME, T_UINT8, Y2, CONST_2PI, CONST_0_001, OP_MUL, T_UINT8, 29, OP_MUL, T_UINT8, 5, OP_MUL, OP_COS, T_UINT8, YAMPL, OP_MUL, OP_ADD, OP_ROUND, 0
+     672   00:1DD2                      ; x01
+     673   00:1DD2                      TRIX10
+     674   00:1DD2                      	db FUNC_EVAL_ME, T_UINT8, X10, CONST_0_001, T_UINT8, RSPEED1, OP_MUL, T_VARREF, LOW ADDR_VAR_I, ( HIGH ADDR_VAR_I ) - $80, MEMPAGE2 / 4, OP_MUL, OP_SIN, T_UINT8, R1, OP_MUL, OP_ADD, OP_ROUND, 0
+     674   00:1DD2  25 40 1E 83 40 2D 03 45 F0 01 02 03 0A 40 23 03 
+     674   00:1DE2  01 0F 00 
+     675   00:1DE5                      ; y01	
+     676   00:1DE5                      TRIY10
+     677   00:1DE5                      	db FUNC_EVAL_ME, T_UINT8, Y10, CONST_0_001, T_UINT8, RSPEED1, OP_MUL, T_VARREF, LOW ADDR_VAR_I, ( HIGH ADDR_VAR_I ) - $80, MEMPAGE2 / 4, OP_MUL, OP_COS, T_UINT8, R1, OP_MUL, OP_ADD, OP_ROUND, 0
+     677   00:1DE5  25 40 1E 83 40 2D 03 45 F0 01 02 03 0B 40 23 03 
+     677   00:1DF5  01 0F 00 
+     678   00:1DF8                      ; x11
+     679   00:1DF8                      TRIX11
+     680   00:1DF8                      	db FUNC_EVAL_ME, T_UINT8, X10, CONST_0_001, T_UINT8, RSPEED1, OP_MUL, T_VARREF, LOW ADDR_VAR_I, ( HIGH ADDR_VAR_I ) - $80, MEMPAGE2 / 4, OP_MUL, CONST_2PI, T_UINT8, 3, OP_DIV, OP_ADD, OP_SIN, T_UINT8, R1, OP_MUL, OP_ADD, OP_ROUND, 0
+     680   00:1DF8  25 40 1E 83 40 2D 03 45 F0 01 02 03 80 40 03 04 
+     680   00:1E08  01 0A 40 23 03 01 0F 00 
+     681   00:1E10                      ; y11
+     682   00:1E10                      TRIY11	
+     683   00:1E10                      	db FUNC_EVAL_ME, T_UINT8, Y10, CONST_0_001, T_UINT8, RSPEED1, OP_MUL, T_VARREF, LOW ADDR_VAR_I, ( HIGH ADDR_VAR_I ) - $80, MEMPAGE2 / 4, OP_MUL, CONST_2PI, T_UINT8, 3, OP_DIV, OP_ADD, OP_COS, T_UINT8, R1, OP_MUL, OP_ADD, OP_ROUND, 0
+     683   00:1E10  25 40 1E 83 40 2D 03 45 F0 01 02 03 80 40 03 04 
+     683   00:1E20  01 0B 40 23 03 01 0F 00 
+     684   00:1E28                      ; x21
+     685   00:1E28                      TRIX12	
+     686   00:1E28                      	db FUNC_EVAL_ME, T_UINT8, X10, CONST_0_001, T_UINT8, RSPEED1, OP_MUL, T_VARREF, LOW ADDR_VAR_I, ( HIGH ADDR_VAR_I ) - $80, MEMPAGE2 / 4, OP_MUL, CONST_2PI, T_UINT8, 2, OP_MUL, T_UINT8, 3, OP_DIV, OP_ADD, OP_SIN, T_UINT8, R1, OP_MUL, OP_ADD, OP_ROUND, 0
+     686   00:1E28  25 40 1E 83 40 2D 03 45 F0 01 02 03 80 40 02 03 
+     686   00:1E38  40 03 04 01 0A 40 23 03 01 0F 00 
+     687   00:1E43                      ; y21	
+     688   00:1E43                      TRIY12
+     689   00:1E43                      	db FUNC_EVAL_ME, T_UINT8, Y10, CONST_0_001, T_UINT8, RSPEED1, OP_MUL, T_VARREF, LOW ADDR_VAR_I, ( HIGH ADDR_VAR_I ) - $80, MEMPAGE2 / 4, OP_MUL, CONST_2PI, T_UINT8, 2, OP_MUL, T_UINT8, 3, OP_DIV, OP_ADD, OP_COS, T_UINT8, R1, OP_MUL, OP_ADD, OP_ROUND, 0
+     689   00:1E43  25 40 1E 83 40 2D 03 45 F0 01 02 03 80 40 02 03 
+     689   00:1E53  40 03 04 01 0B 40 23 03 01 0F 00 
+     690   00:1E5E                      	
+     691   00:1E5E                      TRIX20
+     692   00:1E5E                      	db FUNC_EVAL_ME, T_UINT8, X20, CONST_0_001, T_UINT8, RSPEED2, OP_MUL, T_VARREF, LOW ADDR_VAR_I, ( HIGH ADDR_VAR_I ) - $80, MEMPAGE2 / 4, OP_MUL, OP_SIN, T_UINT8, R2, OP_MUL, OP_ADD, OP_ROUND, 0
+     692   00:1E5E  25 40 DC 83 40 23 03 45 F0 01 02 03 0A 40 19 03 
+     692   00:1E6E  01 0F 00 
+     693   00:1E71                      ; y01	
+     694   00:1E71                      TRIY20
+     695   00:1E71                      	db FUNC_EVAL_ME, T_UINT8, Y20, CONST_0_001, T_UINT8, RSPEED2, OP_MUL, T_VARREF, LOW ADDR_VAR_I, ( HIGH ADDR_VAR_I ) - $80, MEMPAGE2 / 4, OP_MUL, OP_COS, T_UINT8, R2, OP_MUL, OP_ADD, OP_ROUND, 0
+     695   00:1E71  25 40 1E 83 40 23 03 45 F0 01 02 03 0B 40 19 03 
+     695   00:1E81  01 0F 00 
+     696   00:1E84                      ; x11
+     697   00:1E84                      TRIX21
+     698   00:1E84                      	db FUNC_EVAL_ME, T_UINT8, X20, CONST_0_001, T_UINT8, RSPEED2, OP_MUL, T_VARREF, LOW ADDR_VAR_I, ( HIGH ADDR_VAR_I ) - $80, MEMPAGE2 / 4, OP_MUL, CONST_2PI, T_UINT8, 3, OP_DIV, OP_ADD, OP_SIN, T_UINT8, R2, OP_MUL, OP_ADD, OP_ROUND, 0
+     698   00:1E84  25 40 DC 83 40 23 03 45 F0 01 02 03 80 40 03 04 
+     698   00:1E94  01 0A 40 19 03 01 0F 00 
+     699   00:1E9C                      ; y11
+     700   00:1E9C                      TRIY21	
+     701   00:1E9C                      	db FUNC_EVAL_ME, T_UINT8, Y20, CONST_0_001, T_UINT8, RSPEED2, OP_MUL, T_VARREF, LOW ADDR_VAR_I, ( HIGH ADDR_VAR_I ) - $80, MEMPAGE2 / 4, OP_MUL, CONST_2PI, T_UINT8, 3, OP_DIV, OP_ADD, OP_COS, T_UINT8, R2, OP_MUL, OP_ADD, OP_ROUND, 0
+     701   00:1E9C  25 40 1E 83 40 23 03 45 F0 01 02 03 80 40 03 04 
+     701   00:1EAC  01 0B 40 19 03 01 0F 00 
+     702   00:1EB4                      ; x21
+     703   00:1EB4                      TRIX22	
+     704   00:1EB4                      	db FUNC_EVAL_ME, T_UINT8, X20, CONST_0_001, T_UINT8, RSPEED2, OP_MUL, T_VARREF, LOW ADDR_VAR_I, ( HIGH ADDR_VAR_I ) - $80, MEMPAGE2 / 4, OP_MUL, CONST_2PI, T_UINT8, 2, OP_MUL, T_UINT8, 3, OP_DIV, OP_ADD, OP_SIN, T_UINT8, R2, OP_MUL, OP_ADD, OP_ROUND, 0
+     704   00:1EB4  25 40 DC 83 40 23 03 45 F0 01 02 03 80 40 02 03 
+     704   00:1EC4  40 03 04 01 0A 40 19 03 01 0F 00 
+     705   00:1ECF                      ; y21	
+     706   00:1ECF                      TRIY22
+     707   00:1ECF                      	db FUNC_EVAL_ME, T_UINT8, Y20, CONST_0_001, T_UINT8, RSPEED2, OP_MUL, T_VARREF, LOW ADDR_VAR_I, ( HIGH ADDR_VAR_I ) - $80, MEMPAGE2 / 4, OP_MUL, CONST_2PI, T_UINT8, 2, OP_MUL, T_UINT8, 3, OP_DIV, OP_ADD, OP_COS, T_UINT8, R2, OP_MUL, OP_ADD, OP_ROUND, 0	
+     707   00:1ECF  25 40 1E 83 40 23 03 45 F0 01 02 03 80 40 02 03 
+     707   00:1EDF  40 03 04 01 0B 40 19 03 01 0F 00 
+     708   00:1EEA                      
+     709   00:1EEA                      	
+     710   00:1EEA                      CALCXY_END
+     711   00:1EEA                      
+     712   00:1EEA                      DRAW_TRI: ; (4)
+     713   00:1EEA  01                  	db FUNC_CLEAR_BITMAP
+     714   00:1EEB                      DT_XY_TARGETS
+     715   00:1EEB  16                  	db FUNC_SET_PEN_COLOR
+     716   00:1EEC  0F                  	db $0f
+     717   00:1EED  26                  	db FUNC_DRAW_TRI
+     718   00:1EEE                      DT_XY_SOURCES
+     719   00:1EEE                      	dw 0, 0, 0, 0, 0, 0
+     719   00:1EEE  00 00 00 00 00 00 00 00 00 00 00 00 
+     720   00:1EFA                      DT_COLOR
+     721   00:1EFA  FF                  	db $ff
+     722   00:1EFB  26                  	db FUNC_DRAW_TRI
+     723   00:1EFC                      DT_XY1
+     724   00:1EFC                      	dw 0, 0, 0, 0, 0, 0
+     724   00:1EFC  00 00 00 00 00 00 00 00 00 00 00 00 
+     725   00:1F08                      DT_COLOR1
+     726   00:1F08  F2                  	db $f2
+     727   00:1F09  26                  	db FUNC_DRAW_TRI
+     728   00:1F0A                      DT_XY2
+     729   00:1F0A                      	dw 0, 0, 0, 0, 0, 0
+     729   00:1F0A  00 00 00 00 00 00 00 00 00 00 00 00 
+     730   00:1F16                      DT_COLOR2
+     731   00:1F16  F2                  	db $f2
+     732   00:1F17                      DRAW_TRI_END
+     733   00:1F17                      	
+     734   00:1F17                      
+     735   00:1F17                      FUNC_EXEC:
+     736   00:1F17                      ;	   Memmove_short, page:4, dest:$0008
+     737   00:1F17  0B 08 08 00         	DB FUNC_MEMMOVE_SHORT, MEMPAGE2,  8, 0
+     738   00:1F1B                      FE_SRC_ADDR
+     739   00:1F1B  00 02               	DB 0, $02
+     740   00:1F1D                      FE_SIZE
+     741   00:1F1D  8A 01               	DB LOW (CALCXY_END - CALCXY), HIGH (CALCXY_END - CALCXY)
+     742   00:1F1F                      FUNC_EXEC_END
+     743   00:1F1F                      
+     744   00:1F1F                      COLORS:
+     745   00:1F1F                      	db $81, $11, $19, $99, $9F, $FF, $F9, $99, $91, $11, $18, $88
+     745   00:1F1F  81 11 19 99 9F FF F9 99 91 11 18 88 
+     746   00:1F2B                      	db $82, $22, $2a, $aa, $aF, $ff, $fa, $aa, $a2, $22, $28, $88
+     746   00:1F2B  82 22 2A AA AF FF FA AA A2 22 28 88 
+     747   00:1F37                      	db $84, $44, $4C, $cc, $CF, $ff, $fc, $cc, $c4, $44, $48, $88
+     747   00:1F37  84 44 4C CC CF FF FC CC C4 44 48 88 
+     748   00:1F43                      	db $83, $33, $3b, $bb, $bf, $ff, $fb, $bb, $b3, $33, $38, $88
+     748   00:1F43  83 33 3B BB BF FF FB BB B3 33 38 88 
+     749   00:1F4F  00                  	db $00
+     750   00:1F50                      
+     751   00:1F50                      COLOR_P
+     752   00:1F50  00 00               	dw 00
+     753   00:1F52                      	
+     754   00:1F52                      COUNTER
+     755   00:1F52  00                  	db 00
+     756   00:1F53                      	
+     757   00:1F53                      BASE_PORT:
+     758   00:1F53  00                    db 00
+     759   00:1F54                        
+     760   00:1F54                      IRQ_NUM
+     761   00:1F54  01                    db 1
+     762   00:1F55                        
+     763   00:1F55                      ORIG_MEMPAGE
+     764   00:1F55  00                    db 00
+     765   00:1F56                      
+     766   00:1F56                      PROGRAM_END:
+
+    LABELS
+-------------------------------------------------
+00:00000090 X REG_SPRITE_ENABLE_LOW
+00:00000091 X REG_SPRITE_ENABLE_HIGH
+00:00000092 X REG_SPRITE_FOREGROUND_LOW
+00:00000093 X REG_SPRITE_FOREGROUND_HIGH
+00:000000A0   REG_SCREEN_VIDEOMODE
+00:000000A4   REG_SCREEN_BITMAP_BASEADDR
+00:000000A8 X REG_SCREEN_Y
+00:000000B0   REG_MEMORY_P2
+00:000000C0   REG_FUNCTION_EXEC
+00:000000C1   REG_FUNCTION_PARAM_START
+00:000000C2   REG_FUNCTION_RESULT
+00:000000C6   REG_FUNCTION_MULTIEXEC
+00:000000C7   REG_FUNCTION_BITMAP_BASE
+00:00000001   OP_ADD
+00:00000002 X OP_SUB
+00:00000003   OP_MUL
+00:00000004   OP_DIV
+00:0000000A   OP_SIN
+00:0000000B   OP_COS
+00:0000000F   OP_ROUND
+00:00000040   T_UINT8
+00:00000041   T_INT16
+00:00000042 X T_INT32
+00:00000043 X T_TVCFLOAT
+00:00000044 X T_FLOAT
+00:00000045   T_VARREF
+00:00000080   CONST_2PI
+00:00000083   CONST_0_001
+00:00000001   FUNC_CLEAR_BITMAP
+00:0000000B   FUNC_MEMMOVE_SHORT
+00:00000016   FUNC_SET_PEN_COLOR
+00:00000025   FUNC_EVAL_ME
+00:00000026   FUNC_DRAW_TRI
+00:00008000   ADDR_FUNC_EXEC
+00:00008200   ADDR_EVAL_MATH
+00:00008400   ADDR_DRAW_TRIS
+00:000081F0   ADDR_VAR_I
+00:00000B4F   BORDER
+00:00000008   COUNTER_RESET
+00:00000008   MEMPAGE2
+00:000019EF   PROGRAM_START
+00:00001A16   PROGRAM_START.loop
+00:00001A26   base_port_addr_str
+00:00001A35 X quit_with_error
+00:00001A45   teardown
+00:00001A91   setup
+00:00001B3C   id_string
+00:00001B43   set_base_port
+00:00001B46   set_base_port.find_loop
+00:00001B64   set_base_port.id_found
+00:00001B72   set_base_port.cmp_loop
+00:00001B7B   set_base_port.no_id_found_str
+00:00001B91   print_cstring
+00:00001B93   print_cstring.print_cstring_loop
+00:00001B9F   print_cstring.cstring_done
+00:00001BA2 X print_hex_word
+00:00001BA7   print_hex_byte
+00:00001BBA   print_hex_digit
+00:00001BC2   print_hex_digit.alpha_chars
+00:00001BC4   print_char
+00:00001BC8   print_newline
+00:00001BCF   print_newline.newline
+00:00001BD2   wait_for_func_finish
+00:00001BD4   wait_for_func_finish.check_exec_status
+00:00001BD7   wait_for_func_finish.wait_loop
+00:00001BED   wait_for_func_finish.check_result
+00:00001C07   wait_for_func_finish.operation_timed_out_str
+00:00001C1C   wait_for_func_finish.failed_operation_str
+00:00001C3B   TARGET_BITMAP
+00:00001C3C   MY_IRQ
+00:00001C78   MY_IRQ.jump_out
+00:00001C7B   MY_IRQ.do_the_calc
+00:00001D24   MY_IRQ.color_ok
+00:00001D31   MY_IRQ.skip_color_scroll
+00:00001D47 X MY_IRQ.end_my_irq
+00:00000014   XAMPL
+00:00000014   YAMPL
+00:00000080   X0
+00:00000014   Y0
+00:0000001E   X1
+00:000000DC   Y1
+00:000000E6   X2
+00:000000C8   Y2
+00:0000001E   X10
+00:0000001E   Y10
+00:00000023   R1
+00:0000002D   RSPEED1
+00:000000DC   X20
+00:0000001E   Y20
+00:00000019   R2
+00:00000023   RSPEED2
+00:00001D60   CALCXY
+00:00001D73   CXY_1FUNC_END
+00:00001DD2   TRIX10
+00:00001DE5   TRIY10
+00:00001DF8   TRIX11
+00:00001E10   TRIY11
+00:00001E28   TRIX12
+00:00001E43   TRIY12
+00:00001E5E   TRIX20
+00:00001E71   TRIY20
+00:00001E84   TRIX21
+00:00001E9C   TRIY21
+00:00001EB4   TRIX22
+00:00001ECF   TRIY22
+00:00001EEA   CALCXY_END
+00:00001EEA   DRAW_TRI
+00:00001EEB X DT_XY_TARGETS
+00:00001EEE   DT_XY_SOURCES
+00:00001EFA   DT_COLOR
+00:00001EFC   DT_XY1
+00:00001F08   DT_COLOR1
+00:00001F0A   DT_XY2
+00:00001F16   DT_COLOR2
+00:00001F17   DRAW_TRI_END
+00:00001F17   FUNC_EXEC
+00:00001F1B   FE_SRC_ADDR
+00:00001F1D X FE_SIZE
+00:00001F1F   FUNC_EXEC_END
+00:00001F1F   COLORS
+00:00001F50   COLOR_P
+00:00001F52   COUNTER
+00:00001F53   BASE_PORT
+00:00001F54   IRQ_NUM
+00:00001F55   ORIG_MEMPAGE
+00:00001F56   PROGRAM_END
+
+
+ Output: trd.cas
+-------------------------------------------------
+
+ Page: 00
+  Org: 0000195F  Size: *  Used: 000005F7
+
+   Address   Length Align   Label
+   0000195F    1527         PROGRAM_START

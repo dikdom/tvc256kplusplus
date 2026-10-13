@@ -1,0 +1,22 @@
+.program dbus_handler
+.wrap_target
+  pull block
+  out pindirs, 9
+  pull block
+  out pins, 9
+  wait 1 pin 0
+  mov pindirs, NULL
+.wrap
+
+% c-sdk {
+// this is a raw helper function for use by the user which sets up the GPIO output, and configures the SM to output on a particular pin
+void dbus_handler_program_init(PIO pio, uint sm, uint offset, uint start_in_pin, uint start_out_pin) {
+    pio_sm_config c = dbus_handler_program_get_default_config(offset);
+    sm_config_set_out_pin_base(&c, start_out_pin);
+    sm_config_set_out_pin_count(&c, 9);
+    sm_config_set_in_pin_base(&c, start_in_pin);
+    sm_config_set_in_pin_count(&c, 1);
+    pio_sm_init(pio, sm, offset, &c);
+}
+
+%}

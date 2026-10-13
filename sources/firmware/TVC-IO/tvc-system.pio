@@ -1,0 +1,71 @@
+
+// pin 0 /EXPn
+// pin 1 /MREQ
+// pin 2 /P2
+// pin 3 /P3
+// pin 4 /RD
+// pin 5 /WR
+
+.program memreq_ram_p2
+    set y, 0b100 ; !p3, p2, mreq
+start_loop:
+.wrap_target
+    mov x, pins
+    jmp x!=y, start_loop
+    irq 0
+    wait 1 pin 0        ; wait for /MREQ to be 1
+.wrap
+
+.program memreq_ram_p3
+    set y, 0b010 ; p3, !p2, mreq
+.wrap_target
+start_loop:
+    mov x, pins
+    jmp x!=y, start_loop
+    irq 0
+wait_for_no_mreq:
+    wait 1 pin 0        ; wait for /MREQ to be 1
+.wrap
+
+; PIN_RD    pin 0
+; PIN_WR,   pin 1
+; PIN_SLOTn pin 2 
+; PIN_IORQ  pin 3
+; PIN_A0    pin 4  // 4-11
+.program border_io
+    set y, 0b0101 ; wait for write and NO read!
+.wrap_target
+start_loop:
+    mov x, pins
+    jmp x!=y, start_loop
+    irq 1
+wait_for_no_mreq:
+    wait 1 pin 3        ; wait for /IOREQ to be 1
+.wrap
+
+% c-sdk {
+// this is a raw helper function for use by the user which sets up the GPIO output, and configures the SM to output on a particular pin
+
+void memreq_ram_p2_program_init(PIO pio, uint sm, uint offset, uint start_in_pin) {
+    pio_sm_config c = memreq_ram_p2_program_get_default_config(offset);
+    sm_config_set_in_pin_base(&c, start_in_pin);
+    sm_config_set_in_pin_count(&c, 3);
+    pio_sm_init(pio, sm, offset, &c);
+}
+
+void memreq_ram_p3_program_init(PIO pio, uint sm, uint offset, uint start_in_pin) {
+    pio_sm_config c = memreq_ram_p3_program_get_default_config(offset);
+    sm_config_set_in_pin_base(&c, start_in_pin);
+    sm_config_set_in_pin_count(&c, 3);
+    pio_sm_init(pio, sm, offset, &c);
+}
+
+void border_io_program_init(PIO pio, uint sm, uint offset, uint start_in_pin) {
+    pio_sm_config c = border_io_program_get_default_config(offset);
+    sm_config_set_in_pin_base(&c, start_in_pin);
+    sm_config_set_in_pin_count(&c, 12);
+    pio_sm_init(pio, sm, offset, &c);
+}
+
+
+%}

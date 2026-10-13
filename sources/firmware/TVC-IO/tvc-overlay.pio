@@ -1,0 +1,135 @@
+;
+; Copyright (c) 2020 Raspberry Pi (Trading) Ltd.
+;
+; SPDX-License-Identifier: BSD-3-Clause
+;
+
+.program reset_rp2350
+.wrap_target
+  wait 0 pin 0
+  irq 0
+  wait 1 pin 0
+.wrap
+
+; SET pin 0 should be mapped to your LED GPIO
+
+; 6m25 (0), border(1), hsync(2), vsync(3)
+
+.program draw_overlay_new
+    out NULL, 32
+;    wait 0 pin 3
+;    wait 1 pin 3
+.wrap_target
+    out y, 32
+    out pins, 8
+    wait 1 pin 1
+    wait 1 pin 0
+    wait 0 pin 0
+    jmp y--, loop
+loop:
+    wait 1 pin 0
+out_color:
+    out pins, 8
+    wait 0 pin 0
+    jmp y--, loop
+    wait 0 pin 1
+.wrap
+
+
+;
+; 74LS298 receives color data, latches on falling clock, in TVC clock is /6m25
+; MCU should set up color data by LEADING edge of 6M25, 
+; so cart should be set up by LEADING edge of 6m25 -> data must be started to set up on Falling 6m25
+;
+;
+;
+;6M25
+;----    ------    ------    ------    ------    ------    ------    ------    
+;   |    |    |    |    |    |    |    |    |    |    |    |    |    |    |    |
+;   ------    ------    ------    ------    ------    ------    ------    ------
+;   CO    di  CO    di
+;CO - color out
+;di - data in
+;
+;
+;/BORDER
+;  -------------------------------------------------------------------------------
+;  |
+;---
+
+
+
+
+.program draw_overlay
+    out NULL, 32
+    wait 0 pin 3
+    wait 1 pin 3
+.wrap_target
+    out y, 32
+    wait 1 pin 1
+loop:
+    wait 1 pin 0
+    OUT pins, 8
+    wait 0 pin 0
+    jmp y--, loop
+    wait 0 pin 1
+.wrap
+
+
+
+% c-sdk {
+// this is a raw helper function for use by the user which sets up the GPIO output, and configures the SM to output on a particular pin
+
+int draw_overlay_program_init(PIO pio, uint sm, uint offset, uint in_pin_start, uint out_pin_start) {
+    pio_set_gpio_base(pio, 16);
+    for(int i=0; i<4; i++) {
+        pio_gpio_init(pio, in_pin_start+i);
+    }
+    for(int i=0; i<5; i++) {
+        pio_gpio_init(pio, out_pin_start+i);
+    }
+
+    pio_sm_set_consecutive_pindirs(pio, sm, in_pin_start, 4, false);
+    pio_sm_set_consecutive_pindirs(pio, sm, out_pin_start, 5, true);
+    pio_sm_config c = draw_overlay_program_get_default_config(offset);
+    sm_config_set_out_pins(&c, out_pin_start, 5);
+    sm_config_set_out_shift(&c, true, true, 32);
+    sm_config_set_set_pins(&c, out_pin_start, 5);
+    sm_config_set_in_pins(&c, in_pin_start);
+    sm_config_set_in_shift(&c, false, false, 5);
+    sm_config_set_jmp_pin(&c, in_pin_start + 1);
+    sm_config_set_fifo_join(&c, PIO_FIFO_JOIN_TX);
+    return pio_sm_init(pio, sm, offset, &c);
+}
+
+int draw_overlay_new_program_init(PIO pio, uint sm, uint offset, uint in_pin_start, uint out_pin_start) {
+    pio_set_gpio_base(pio, 16);
+    for(int i=0; i<4; i++) {
+        pio_gpio_init(pio, in_pin_start+i);
+    }
+    for(int i=0; i<5; i++) {
+        pio_gpio_init(pio, out_pin_start+i);
+    }
+
+    pio_sm_set_consecutive_pindirs(pio, sm, in_pin_start, 4, false);
+    pio_sm_set_consecutive_pindirs(pio, sm, out_pin_start, 5, true);
+    pio_sm_config c = draw_overlay_new_program_get_default_config(offset);
+    sm_config_set_out_pins(&c, out_pin_start, 5);
+    sm_config_set_out_shift(&c, true, true, 32);
+    sm_config_set_set_pins(&c, out_pin_start, 5);
+    sm_config_set_in_pins(&c, in_pin_start);
+    sm_config_set_in_shift(&c, false, false, 5);
+    sm_config_set_jmp_pin(&c, in_pin_start + 1);
+    sm_config_set_fifo_join(&c, PIO_FIFO_JOIN_TX);
+    return pio_sm_init(pio, sm, offset, &c);
+}
+
+void reset_rp2350_program_init(PIO pio, uint sm, uint offset, uint start_in_pin) {
+    pio_sm_config c = reset_rp2350_program_get_default_config(offset);
+    sm_config_set_in_pin_base(&c, start_in_pin);
+    sm_config_set_in_pin_count(&c, 1);
+    pio_sm_init(pio, sm, offset, &c);
+}
+
+
+%}

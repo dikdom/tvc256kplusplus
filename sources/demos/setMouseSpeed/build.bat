@@ -1,0 +1,1 @@
+sjasm.exe sms-as.asm sms-as.cas

@@ -1,0 +1,1245 @@
+Sjasm Z80 Assembler v0.42c - www.xl2s.tk             [2026.07.20 - 21:43:50]
+
+demo.asm
+Errors: 0
+
+       1   00:195F  (00:0000)           PPREG_SPRITE_X equ $00
+       2   00:195F  (00:0020)           PPREG_SPRITE_Y equ $20
+       3   00:195F  (00:0040)           PPREG_SPRITE_COLOR equ $40
+       4   00:195F  (00:0050)           PPREG_SPRITE_PHASE equ $50
+       5   00:195F                      
+       6   00:195F  (00:0090)           PPREG_SPRITE_ENABLE_LOW equ $90
+       7   00:195F  (00:0091)           PPREG_SPRITE_ENABLE_HIGH equ $91
+       8   00:195F  (00:0094)           PPREG_SPRITE_COLORMODE_LOW equ $94
+       9   00:195F  (00:0095)           PPREG_SPRITE_COLORMODE_HIGH equ $95
+      10   00:195F                      
+      11   00:195F  (00:00A0)           PPREG_SCREEN_VIDEOMODE equ $A0
+      12   00:195F  (00:00A5)           PPREG_SCREEN_SCROLL_X equ $A5
+      13   00:195F  (00:00A8)           PPREG_SCREEN_Y equ $A8
+      14   00:195F  (00:00B0)           PPREG_MEMORY_P2 equ $B0
+      15   00:195F  (00:00C0)           PPREG_FUNCTION_EXEC equ $C0
+      16   00:195F  (00:00C1)           PPREG_FUNCTION_PARAM_START equ $C1
+      17   00:195F  (00:00C2)           PPREG_FUNCTION_RESULT equ $C2
+      18   00:195F                      
+      19   00:195F                      	org $19ef - $90
+      20   00:195F                      	include "cas-header.asm"
+       1.  00:195F                      ; fileType - $01 buffered, $11 non-buffered
+       2.  00:195F  11                    db $11
+       3.  00:1960                      
+       4.  00:1960                      ; copyprotect - $00 no protection
+       5.  00:1960  00                    db $00
+       6.  00:1961                      
+       7.  00:1961                      ; number of blocks, lo-hi order. Program size in $80 sized blocks
+       8.  00:1961  18 00                 dw ((PROGRAM_END - PROGRAM_START - 1) / $80 ) + 1
+       9.  00:1963                      
+      10.  00:1963                      ; lastblock bytes (0-$7f)
+      11.  00:1963  51                    db (PROGRAM_END - PROGRAM_START) % $80
+      12.  00:1964                      
+      13.  00:1964                      ; filled with zeroes
+      14.  00:1964  00 (123)              ds ($80-$05)
+      15.  00:19DF                      
+      16.  00:19DF                      ; always $00
+      17.  00:19DF  00                    db $00
+      18.  00:19E0                      
+      19.  00:19E0                      ; type of file: 01h program file, $00 data file
+      20.  00:19E0  01                    db $01
+      21.  00:19E1                      
+      22.  00:19E1                      ; program size in bytes lo/hi order
+      23.  00:19E1  D1 0B                 dw (PROGRAM_END - PROGRAM_START)
+      24.  00:19E3                      
+      25.  00:19E3                      ; autorun if $ff
+      26.  00:19E3  FF                    db $FF
+      27.  00:19E4                      
+      28.  00:19E4                      ; always $00
+      29.  00:19E4  00 (11)               ds ($90-$85)
+      21   00:19EF                      PROGRAM_START:
+      22   00:19EF                      	include "basic-header.asm"
+       1.  00:19EF                              org     19efh
+       2.  00:19EF  0E 0A 00 DD                 db      0eh,0ah,00h,0ddh
+       3.  00:19F3  55 53 52                    db      "USR"
+       4.  00:19F6  96                          db      96h
+       5.  00:19F7  36 36 35 36                 db      "6656"
+       6.  00:19FB  95 FF 00 00 00              db      95h,0ffh,00h,00h,00h
+      23   00:1A00                      	org $1a00
+      24   00:1A00                      
+      25   00:1A00  CD 34 22            	call set_base_port
+      26   00:1A03  C0                  	ret nz
+      27   00:1A04                      
+      28   00:1A04  21 4C 1A            	ld hl, base_port_addr_str
+      29   00:1A07  CD 82 22            	call print_cstring
+      30   00:1A0A  3A C3 22            	ld a, (BASE_PORT)
+      31   00:1A0D  CD 98 22            	call print_hex_byte
+      32   00:1A10  CD B9 22            	call print_newline
+      33   00:1A13                      
+      34   00:1A13  CD 8D 1A            	call setup
+      35   00:1A16                        
+      36   00:1A16  21 5B 1A            	ld hl, opening_file_str
+      37   00:1A19  CD 82 22            	call print_cstring
+      38   00:1A1C  CD B9 22            	call print_newline
+      39   00:1A1F                        
+      40   00:1A1F  CD ED 1A            	call open_file
+      41   00:1A22  21 01 00            	ld hl, 1
+      42   00:1A25  C2 7D 1A            	jp nz, quit_with_error
+      43   00:1A28                      
+      44   00:1A28  21 6C 1A            	ld hl, reading_file_str
+      45   00:1A2B  CD 82 22            	call print_cstring
+      46   00:1A2E  CD B9 22            	call print_newline
+      47   00:1A31                        
+      48   00:1A31  CD 0E 1B            	call read_bitmap
+      49   00:1A34  21 02 00            	ld hl, 2
+      50   00:1A37  C2 7D 1A            	jp nz, quit_with_error
+      51   00:1A3A                      
+      52   00:1A3A  CD 5F 1B            	call close_file
+      53   00:1A3D  21 03 00            	ld hl, 3
+      54   00:1A40  C2 7D 1A            	jp nz, quit_with_error
+      55   00:1A43                      	
+      56   00:1A43  F7                  	rst $30
+      57   00:1A44  05                  	db $05
+      58   00:1A45                      	
+      59   00:1A45  C3 D9 1B            	jp DEMO
+      60   00:1A48                      
+      61   00:1A48  21 00 00            	ld hl, 0
+      62   00:1A4B  C9                  	ret
+      63   00:1A4C                      
+      64   00:1A4C                      base_port_addr_str:
+      65   00:1A4C                      	dz "Base IO addr: "
+      65   00:1A4C  42 61 73 65 20 49 4F 20 61 64 64 72 3A 20 00 
+      66   00:1A5B                      opening_file_str:
+      67   00:1A5B                      	dz "Opening file ..."
+      67   00:1A5B  4F 70 65 6E 69 6E 67 20 66 69 6C 65 20 2E 2E 2E 
+      67   00:1A6B  00 
+      68   00:1A6C                      reading_file_str:
+      69   00:1A6C                      	dz "Reading file ..."
+      69   00:1A6C  52 65 61 64 69 6E 67 20 66 69 6C 65 20 2E 2E 2E 
+      69   00:1A7C  00 
+      70   00:1A7D                      
+      71   00:1A7D                      quit_with_error:
+      72   00:1A7D  3A C3 22            	ld a, (BASE_PORT)
+      73   00:1A80  4F                  	ld c, a
+      74   00:1A81  3E A0               	ld a, PPREG_SCREEN_VIDEOMODE
+      75   00:1A83  ED 79               	out (c), a
+      76   00:1A85  0C                  	inc c
+      77   00:1A86  AF                  	xor a
+      78   00:1A87  ED 79               	out (c), a
+      79   00:1A89  21 FF FF            	ld hl, -1
+      80   00:1A8C  C9                  	ret
+      81   00:1A8D                      
+      82   00:1A8D                      setup:
+      83   00:1A8D  3A C3 22                ld a, (BASE_PORT)
+      84   00:1A90  4F                  	ld c, a
+      85   00:1A91                      	
+      86   00:1A91  0C                  	inc c
+      87   00:1A92  0C                  	inc c
+      88   00:1A93  AF                  	xor a
+      89   00:1A94  ED 79               	out (c), a
+      90   00:1A96  0D                  	dec c
+      91   00:1A97  0D                  	dec c
+      92   00:1A98                      
+      93   00:1A98                      	
+      94   00:1A98                      	; parameter is read from $8000
+      95   00:1A98  3E C1               	ld a, PPREG_FUNCTION_PARAM_START
+      96   00:1A9A  ED 79               	out (c), a
+      97   00:1A9C  AF                  	xor a
+      98   00:1A9D  0C                  	inc c
+      99   00:1A9E  ED 79               	out (c), a
+     100   00:1AA0  0D                  	dec c
+     101   00:1AA1                      	
+     102   00:1AA1                      	; memory mapping set to page 4 -> 8000-bfff
+     103   00:1AA1  3E B0               	ld a, PPREG_MEMORY_P2
+     104   00:1AA3  ED 79               	out (c), a
+     105   00:1AA5  0C                  	inc c
+     106   00:1AA6  3E 04               	ld a, 4
+     107   00:1AA8  ED 79               	out (c), a
+     108   00:1AAA  0D                  	dec c
+     109   00:1AAB                      	
+     110   00:1AAB                      	; set screen to gfx
+     111   00:1AAB  3E A0               	ld a, PPREG_SCREEN_VIDEOMODE
+     112   00:1AAD  ED 79               	out (c), a
+     113   00:1AAF  3E 03               	ld a, 3
+     114   00:1AB1  0C                  	inc c
+     115   00:1AB2  ED 79               	out (c), a
+     116   00:1AB4  0D                  	dec c
+     117   00:1AB5                      	
+     118   00:1AB5                      	; hide sprites
+     119   00:1AB5  3E 90               	ld a, PPREG_SPRITE_ENABLE_LOW
+     120   00:1AB7  ED 79               	out (c), a
+     121   00:1AB9  AF                  	xor a
+     122   00:1ABA  0C                  	inc c
+     123   00:1ABB  ED 79               	out (c), a
+     124   00:1ABD  0D                  	dec c
+     125   00:1ABE                      	
+     126   00:1ABE  3E 90               	ld a, PPREG_SPRITE_ENABLE_LOW
+     127   00:1AC0  ED 79               	out (c), a
+     128   00:1AC2  AF                  	xor a
+     129   00:1AC3  0C                  	inc c
+     130   00:1AC4  ED 79               	out (c), a
+     131   00:1AC6  0D                  	dec c
+     132   00:1AC7                      	
+     133   00:1AC7  3E B0               	ld a, PPREG_MEMORY_P2
+     134   00:1AC9  ED 79               	out (c), a
+     135   00:1ACB  0C                  	inc c
+     136   00:1ACC  AF                  	xor a
+     137   00:1ACD  ED 79               	out (c), a
+     138   00:1ACF                      	
+     139   00:1ACF  21 C4 22            	ld hl, VIDEOTON
+     140   00:1AD2  11 80 80            	ld de, $8000 + 2*64
+     141   00:1AD5  01 00 02            	ld bc, 8*64
+     142   00:1AD8  ED B0               	ldir
+     143   00:1ADA                      	
+     144   00:1ADA  21 C4 24            	ld hl, SANTAS_HAT
+     145   00:1ADD  11 00 C0            	ld de, $8000 + 256*64
+     146   00:1AE0  01 FC 00            	ld bc, 252
+     147   00:1AE3  ED B0               	ldir
+     148   00:1AE5                      
+     149   00:1AE5  C9                  	ret
+     150   00:1AE6                      
+     151   00:1AE6                      	include "load-bitmap.asm"
+       1.  00:1AE6                      civis_bmp_name:
+       2.  00:1AE6                          db 6, "08.bmp"
+       2.  00:1AE6  06 30 38 2E 62 6D 70 
+       3.  00:1AED                      
+       4.  00:1AED                      open_file:
+       5.  00:1AED  21 E6 1A            	ld hl, civis_bmp_name
+       6.  00:1AF0  11 02 80            	ld de, $8002
+       7.  00:1AF3  01 07 00            	ld bc, 7
+       8.  00:1AF6  ED B0               	ldir
+       9.  00:1AF8  3E 01               	ld a, $01		; open for read
+      10.  00:1AFA  32 00 80            	ld ($8000), a
+      11.  00:1AFD                      
+      12.  00:1AFD  3A C3 22            	ld a, (BASE_PORT)
+      13.  00:1B00  4F                  	ld c, a
+      14.  00:1B01  3E C0               	ld a, PPREG_FUNCTION_EXEC
+      15.  00:1B03  ED 79               	out (c), a
+      16.  00:1B05  3E 81               	ld a, $80 + 1 ; open file
+      17.  00:1B07  0C                  	inc c
+      18.  00:1B08  ED 79               	out (c), a
+      19.  00:1B0A                      	
+      20.  00:1B0A  CD 70 1B            	call wait_for_func_finish
+      21.  00:1B0D  C9                  	ret
+      22.  00:1B0E                      	
+      23.  00:1B0E                      read_bitmap:
+      24.  00:1B0E                      	; seek to 118
+      25.  00:1B0E  3E 76               	ld a, 118
+      26.  00:1B10  32 04 80            	ld ($8004), a
+      27.  00:1B13  AF                  	xor a
+      28.  00:1B14  32 05 80            	ld ($8005), a
+      29.  00:1B17  32 06 80            	ld ($8006), a
+      30.  00:1B1A  32 07 80            	ld ($8007), a
+      31.  00:1B1D                      	
+      32.  00:1B1D  3A C3 22            	ld a, (BASE_PORT)
+      33.  00:1B20  4F                  	ld c, a
+      34.  00:1B21  3E C0               	ld a, PPREG_FUNCTION_EXEC
+      35.  00:1B23  ED 79               	out (c), a
+      36.  00:1B25  0C                  	inc c
+      37.  00:1B26  3E 8A               	ld a, $80 + 10 ; file_seek
+      38.  00:1B28  ED 79               	out (c), a
+      39.  00:1B2A  CD 70 1B            	call wait_for_func_finish
+      40.  00:1B2D  C0                  	ret nz
+      41.  00:1B2E                      	
+      42.  00:1B2E  3E 80               	ld a, 128
+      43.  00:1B30  32 04 80            	ld ($8004), a
+      44.  00:1B33  AF                  	xor a
+      45.  00:1B34  32 05 80            	ld ($8005), a
+      46.  00:1B37  32 06 80            	ld ($8006), a
+      47.  00:1B3A  32 09 80            	ld ($8009), a
+      48.  00:1B3D                      	
+      49.  00:1B3D  21 80 F7            	ld hl, $8000+239*128
+      50.  00:1B40                      .loop_load_data
+      51.  00:1B40  E5                  	push hl
+      52.  00:1B41  22 07 80            	ld ($8007), hl
+      53.  00:1B44                      	
+      54.  00:1B44  3E C0               	ld a, PPREG_FUNCTION_EXEC
+      55.  00:1B46  ED 79               	out (c), a
+      56.  00:1B48  0C                  	inc c
+      57.  00:1B49  3E 89               	ld a, $80 + 9 ; read_to_dest
+      58.  00:1B4B  ED 79               	out (c), a
+      59.  00:1B4D  CD 70 1B            	call wait_for_func_finish
+      60.  00:1B50  E1                  	pop hl
+      61.  00:1B51  C0                  	ret nz
+      62.  00:1B52  AF                  	xor a
+      63.  00:1B53  11 80 00            	ld de, 128
+      64.  00:1B56  ED 52               	sbc hl, de
+      65.  00:1B58  7C                  	ld a, h
+      66.  00:1B59  FE 80               	cp $80
+      67.  00:1B5B  30 E3               	jr nc, .loop_load_data
+      68.  00:1B5D  AF                  	xor a
+      69.  00:1B5E  C9                  	ret 
+      70.  00:1B5F                      	
+      71.  00:1B5F                      close_file:
+      72.  00:1B5F  3A C3 22            	ld a, (BASE_PORT)
+      73.  00:1B62  4F                  	ld c, a
+      74.  00:1B63  3E C0               	ld a, PPREG_FUNCTION_EXEC
+      75.  00:1B65  ED 79               	out (c), a
+      76.  00:1B67  0C                  	inc c
+      77.  00:1B68  3E 82               	ld a, $80 + 2 ; close file
+      78.  00:1B6A  ED 79               	out (c), a
+      79.  00:1B6C  CD 70 1B            	call wait_for_func_finish
+      80.  00:1B6F  C9                  	ret
+      81.  00:1B70                      
+      82.  00:1B70                      wait_for_func_finish:
+      83.  00:1B70  06 05               	ld b, 5
+      84.  00:1B72                      .check_exec_status
+      85.  00:1B72  21 00 A0            	ld hl, $a000
+      86.  00:1B75                      .wait_loop:
+      87.  00:1B75  ED 78               	in a, (c)
+      88.  00:1B77  FE FF               	cp $FF
+      89.  00:1B79  28 10               	jr z, .check_result
+      90.  00:1B7B  2B                  	dec hl
+      91.  00:1B7C  7C                  	ld a, h
+      92.  00:1B7D  B5                  	or l
+      93.  00:1B7E  20 F5               	jr nz, .wait_loop
+      94.  00:1B80  10 F0               	djnz .check_exec_status
+      95.  00:1B82  21 A5 1B            	ld hl, .operation_timed_out_str
+      96.  00:1B85  CD 82 22            	call print_cstring
+      97.  00:1B88  AF                  	xor a
+      98.  00:1B89  3C                  	inc a
+      99.  00:1B8A  C9                  	ret
+     100.  00:1B8B                      .check_result:
+     101.  00:1B8B  0D                      dec c
+     102.  00:1B8C  3E C2               	ld a, PPREG_FUNCTION_RESULT
+     103.  00:1B8E  ED 79               	out (c), a
+     104.  00:1B90  0C                  	inc c
+     105.  00:1B91  ED 78               	in a, (c)
+     106.  00:1B93  0D                  	dec c
+     107.  00:1B94  B7                  	or a
+     108.  00:1B95  C8                  	ret z
+     109.  00:1B96  F5                  	push af
+     110.  00:1B97  21 BA 1B            	ld hl, .failed_operation_str
+     111.  00:1B9A  CD 82 22            	call print_cstring
+     112.  00:1B9D  F1                  	pop af
+     113.  00:1B9E  CD 98 22            	call print_hex_byte
+     114.  00:1BA1  3E 01               	ld a, 1
+     115.  00:1BA3  B7                  	or a
+     116.  00:1BA4  C9                  	ret
+     117.  00:1BA5                      
+     118.  00:1BA5                      .operation_timed_out_str:
+     119.  00:1BA5                      	dz "Operation timed out!"
+     119.  00:1BA5  4F 70 65 72 61 74 69 6F 6E 20 74 69 6D 65 64 20 
+     119.  00:1BB5  6F 75 74 21 00 
+     120.  00:1BBA                      .failed_operation_str:
+     121.  00:1BBA                      	dz "Failed operation, error code: "
+     121.  00:1BBA  46 61 69 6C 65 64 20 6F 70 65 72 61 74 69 6F 6E 
+     121.  00:1BCA  2C 20 65 72 72 6F 72 20 63 6F 64 65 3A 20 00 
+     152   00:1BD9                      	include "effects.asm"
+       1.  00:1BD9  (00:001C)           SCROLL_POSY EQU  28
+       2.  00:1BD9  (00:00F4)           STARTLINE EQU    21 + SCROLL_POSY * 8 - 1
+       3.  00:1BD9  (00:0B4F)           BORDER_COLOR EQU $0B4F
+       4.  00:1BD9                      
+       5.  00:1BD9                      DEMO:
+       6.  00:1BD9  F3                  	di
+       7.  00:1BDA                      	
+       8.  00:1BDA  21 FC 21            	ld hl, set_sprite_positions.DX
+       9.  00:1BDD  16 ED               	ld d, 237
+      10.  00:1BDF  CD 29 20            	call set_sprite_positions.fill_d
+      11.  00:1BE2  21 0C 22            	ld hl, set_sprite_positions.DY
+      12.  00:1BE5  16 CF               	ld d, 207
+      13.  00:1BE7  CD 29 20            	call set_sprite_positions.fill_d
+      14.  00:1BEA                      	
+      15.  00:1BEA  21 06 1D            	ld hl, .text
+      16.  00:1BED  22 04 1D            	ld (.current_pos), hl
+      17.  00:1BF0                      
+      18.  00:1BF0  3A C3 22            	ld a, (BASE_PORT)
+      19.  00:1BF3  4F                  	ld c, a
+      20.  00:1BF4                      	
+      21.  00:1BF4  3E 94               	ld a, PPREG_SPRITE_COLORMODE_LOW
+      22.  00:1BF6  ED 79               	out (c), a
+      23.  00:1BF8  3E 0F               	ld a, $0F
+      24.  00:1BFA  0C                  	inc c
+      25.  00:1BFB  ED 79               	out (c), a
+      26.  00:1BFD  0D                  	dec c
+      27.  00:1BFE                      	
+      28.  00:1BFE  3E 95               	ld a, PPREG_SPRITE_COLORMODE_HIGH
+      29.  00:1C00  ED 79               	out (c), a
+      30.  00:1C02  3E F0               	ld a, $F0
+      31.  00:1C04  0C                  	inc c
+      32.  00:1C05  ED 79               	out (c), a
+      33.  00:1C07  0D                  	dec c
+      34.  00:1C08                      	
+      35.  00:1C08                      	
+      36.  00:1C08  1E 44               	ld e, PPREG_SPRITE_COLOR + 4
+      37.  00:1C0A  16 0F               	ld d, 15
+      38.  00:1C0C  06 08               	ld b, 8
+      39.  00:1C0E                      .color_loop:
+      40.  00:1C0E  ED 59               	out (c), e
+      41.  00:1C10  0C                  	inc c
+      42.  00:1C11  ED 51               	out (c), d
+      43.  00:1C13  0D                  	dec c
+      44.  00:1C14  14                  	inc d
+      45.  00:1C15  7A                  	ld a, d
+      46.  00:1C16  FE 10               	cp $10
+      47.  00:1C18  20 02               	jr nz, .skip_color_fix
+      48.  00:1C1A  16 09               	ld d, 9
+      49.  00:1C1C                      .skip_color_fix
+      50.  00:1C1C  1C                  	inc e
+      51.  00:1C1D  10 EF               	djnz .color_loop
+      52.  00:1C1F                      	
+      53.  00:1C1F                      		; port increment set to 0
+      54.  00:1C1F  0C                  	inc c
+      55.  00:1C20  0C                  	inc c
+      56.  00:1C21  3E 01               	ld a, 1
+      57.  00:1C23  ED 79               	out (c), a
+      58.  00:1C25  0D                  	dec c
+      59.  00:1C26  0D                  	dec c
+      60.  00:1C27                      	
+      61.  00:1C27  3E 50               	ld a, PPREG_SPRITE_PHASE
+      62.  00:1C29  06 10               	ld b, 16
+      63.  00:1C2B  ED 79               	out (c), a
+      64.  00:1C2D  0C                  	inc c
+      65.  00:1C2E  3E 40               	ld a, 64
+      66.  00:1C30                      .phase_loop0:
+      67.  00:1C30  ED 79               	out (c), a
+      68.  00:1C32  10 FC               	djnz .phase_loop0
+      69.  00:1C34                      	
+      70.  00:1C34  0D                  	dec c
+      71.  00:1C35                      	
+      72.  00:1C35  0C                  	inc c
+      73.  00:1C36  0C                  	inc c
+      74.  00:1C37  AF                  	xor a
+      75.  00:1C38  ED 79               	out (c), a
+      76.  00:1C3A  0D                  	dec c
+      77.  00:1C3B  0D                  	dec c
+      78.  00:1C3C                      	
+      79.  00:1C3C                      	
+      80.  00:1C3C  1E 54               	ld e, PPREG_SPRITE_PHASE + 4
+      81.  00:1C3E  16 09               	ld d, 9
+      82.  00:1C40  06 08               	ld b, 8
+      83.  00:1C42                      .phase_loop:
+      84.  00:1C42  ED 59               	out (c), e
+      85.  00:1C44  0C                  	inc c
+      86.  00:1C45  ED 51               	out (c), d
+      87.  00:1C47  0D                  	dec c
+      88.  00:1C48  15                  	dec d
+      89.  00:1C49  1C                  	inc e
+      90.  00:1C4A  10 F6               	djnz .phase_loop
+      91.  00:1C4C                      	
+      92.  00:1C4C                      	
+      93.  00:1C4C  3E 90               	ld a, PPREG_SPRITE_ENABLE_LOW
+      94.  00:1C4E  ED 79               	out (c), a
+      95.  00:1C50  0C                  	inc c
+      96.  00:1C51  3E FF               	ld a, $FF
+      97.  00:1C53  ED 79               	out (c), a
+      98.  00:1C55  0D                  	dec c
+      99.  00:1C56                      	
+     100.  00:1C56  3E 91               	ld a, PPREG_SPRITE_ENABLE_HIGH
+     101.  00:1C58  ED 79               	out (c), a
+     102.  00:1C5A  0C                  	inc c
+     103.  00:1C5B  3E FF               	ld a, $FF
+     104.  00:1C5D  ED 79               	out (c), a
+     105.  00:1C5F  0D                  	dec c
+     106.  00:1C60                      	
+     107.  00:1C60                      
+     108.  00:1C60                      	; map in page 0
+     109.  00:1C60  3E B0               	ld a, PPREG_MEMORY_P2     ; map in page 0
+     110.  00:1C62  ED 79               	out (c),a
+     111.  00:1C64  AF                  	xor a
+     112.  00:1C65  0C                  	inc c
+     113.  00:1C66  ED 79               	out (c),a
+     114.  00:1C68  0D                  	dec c
+     115.  00:1C69                      
+     116.  00:1C69  21 80 87            	ld hl, $8400 + (SCROLL_POSY) * 32
+     117.  00:1C6C  11 81 87            	ld de, $8400 + (SCROLL_POSY) * 32 + 1
+     118.  00:1C6F  01 1F 00            	ld bc, $1F
+     119.  00:1C72  3E 20               	ld a, $20
+     120.  00:1C74  77                  	ld (hl), a
+     121.  00:1C75  ED B0               	ldir
+     122.  00:1C77                      
+     123.  00:1C77  23                  	inc hl
+     124.  00:1C78  11 20 00            	ld de, $20
+     125.  00:1C7B  19                  	add hl, de
+     126.  00:1C7C                      
+     127.  00:1C7C  AF                  	xor a
+     128.  00:1C7D                      
+     129.  00:1C7D  3A C3 22            	ld a, (BASE_PORT)
+     130.  00:1C80  4F                  	ld c, a
+     131.  00:1C81                      
+     132.  00:1C81                      .main_loop
+     133.  00:1C81                      
+     134.  00:1C81                      	; read y
+     135.  00:1C81  3E A8               	ld a, PPREG_SCREEN_Y
+     136.  00:1C83  ED 79               	out (c), a
+     137.  00:1C85  0C                  	inc c
+     138.  00:1C86                      .loop_till_no:
+     139.  00:1C86  ED 78               	in a, (c)
+     140.  00:1C88  FE F4               	cp STARTLINE
+     141.  00:1C8A  20 FA               	jr nz, .loop_till_no
+     142.  00:1C8C  0D                  	dec c
+     143.  00:1C8D                      
+     144.  00:1C8D                      	; 2c text mode
+     145.  00:1C8D  3E A0               	ld a, PPREG_SCREEN_VIDEOMODE
+     146.  00:1C8F  ED 79               	out (c),a
+     147.  00:1C91  0C                  	inc c
+     148.  00:1C92  3E 01               	ld a, 1
+     149.  00:1C94  ED 79               	out (c), a
+     150.  00:1C96  0D                  	dec c
+     151.  00:1C97                      
+     152.  00:1C97  3E 82               	ld a, $82     ; dark blue border
+     153.  00:1C99  D3 00               	out ($00), a
+     154.  00:1C9B  21 03 1D            	ld hl, .current_scroll
+     155.  00:1C9E  3E A5               	ld a, PPREG_SCREEN_SCROLL_X
+     156.  00:1CA0  ED 79               	out (c), a
+     157.  00:1CA2  0C                  	inc c
+     158.  00:1CA3  7E                  	ld a, (hl)
+     159.  00:1CA4  ED 79               	out (c), a
+     160.  00:1CA6  0D                  	dec c
+     161.  00:1CA7                      
+     162.  00:1CA7                      	; read y
+     163.  00:1CA7  3E A8               	ld a, PPREG_SCREEN_Y
+     164.  00:1CA9  ED 79               	out (c), a
+     165.  00:1CAB  0C                  	inc c
+     166.  00:1CAC                      .loop_till_yes:
+     167.  00:1CAC  ED 78               	in a, (c)
+     168.  00:1CAE  FE FC               	cp STARTLINE + 8
+     169.  00:1CB0  20 FA               	jr nz, .loop_till_yes
+     170.  00:1CB2  0D                  	dec c
+     171.  00:1CB3                      
+     172.  00:1CB3  3E A0               	ld a, PPREG_SCREEN_VIDEOMODE
+     173.  00:1CB5  ED 79               	out (c),a
+     174.  00:1CB7  0C                  	inc c
+     175.  00:1CB8  3E 03               	ld a, 3
+     176.  00:1CBA  ED 79               	out (c), a
+     177.  00:1CBC  0D                  	dec c
+     178.  00:1CBD                      
+     179.  00:1CBD  3E A0               	ld a, $A0     ; light green border
+     180.  00:1CBF  D3 00               	out ($00),a
+     181.  00:1CC1                      
+     182.  00:1CC1  35                  	dec (hl)
+     183.  00:1CC2  7E                  	ld a, (hl)
+     184.  00:1CC3  FE 80               	cp $80
+     185.  00:1CC5  30 20               	jr nc, .byte_scroll_done
+     186.  00:1CC7                      
+     187.  00:1CC7  3E 87               	ld a, $87
+     188.  00:1CC9  77                  	ld (hl), a
+     189.  00:1CCA  21 81 87            	ld hl, $8400 + SCROLL_POSY * 32 + 1
+     190.  00:1CCD  11 80 87            	ld de, $8400 + SCROLL_POSY * 32 + 0
+     191.  00:1CD0  01 1F 00            	ld bc, 31
+     192.  00:1CD3  ED B0               	ldir
+     193.  00:1CD5                      
+     194.  00:1CD5  2A 04 1D            	ld hl, (.current_pos)
+     195.  00:1CD8  23                  	inc hl
+     196.  00:1CD9  7E                  	ld a, (hl)
+     197.  00:1CDA  B7                  	or a
+     198.  00:1CDB  20 04               	jr nz, .pos_ok
+     199.  00:1CDD  21 06 1D            	ld hl, .text
+     200.  00:1CE0  7E                  	ld a, (hl)
+     201.  00:1CE1                      .pos_ok
+     202.  00:1CE1  22 04 1D            	ld (.current_pos), hl
+     203.  00:1CE4                      
+     204.  00:1CE4  32 9F 87            	ld ($8400 + SCROLL_POSY * 32 + 31), a
+     205.  00:1CE7                      
+     206.  00:1CE7                      .byte_scroll_done
+     207.  00:1CE7  3E 88               	ld a, $88	; light red
+     208.  00:1CE9  D3 00               	out ($00),a
+     209.  00:1CEB  3A C3 22            	ld a, (BASE_PORT)
+     210.  00:1CEE  4F                  	ld c, a
+     211.  00:1CEF                      
+     212.  00:1CEF  3E A5               	ld a, PPREG_SCREEN_SCROLL_X
+     213.  00:1CF1  ED 79               	out (c), a
+     214.  00:1CF3  AF                  	xor a
+     215.  00:1CF4  0C                  	inc c
+     216.  00:1CF5  ED 79               	out (c), a
+     217.  00:1CF7  0D                  	dec c
+     218.  00:1CF8                      	
+     219.  00:1CF8  CD 9C 1F            	call set_sprite_positions
+     220.  00:1CFB  3A 4F 0B            	ld a, (BORDER_COLOR)
+     221.  00:1CFE  D3 00               	out ($00),a
+     222.  00:1D00                      
+     223.  00:1D00  C3 81 1C            	jp .main_loop
+     224.  00:1D03                      
+     225.  00:1D03                      .current_scroll:
+     226.  00:1D03  88                  	db $88
+     227.  00:1D04                      .current_pos:
+     228.  00:1D04  06 1D               	dw .text
+     229.  00:1D06                      	ascmap 'A'..'Z', => 0x01
+     230.  00:1D06                      	ascmap 'a'..'z', => 0x81
+     231.  00:1D06                      	ascmap '@', 0x00
+     232.  00:1D06                      
+     233.  00:1D06                      	ascmap $e1, $f0	; á
+     234.  00:1D06                      	ascmap $e9, $ec ; é
+     235.  00:1D06                      	ascmap $ed, $e1 ; í
+     236.  00:1D06                      	ascmap $f3, $f6 ; ó
+     237.  00:1D06                      	ascmap $f6, $f4 ; ö
+     238.  00:1D06                      	ascmap $f5, $e5 ; õ
+     239.  00:1D06                      	ascmap $fa, $f5 ; ú
+     240.  00:1D06                      	ascmap $fc, $ee ; ü
+     241.  00:1D06                      	ascmap $fb, $fb ; û
+     242.  00:1D06                      ;	asc "áéíóû'
+     243.  00:1D06                      ; will not work sjasm 0.42c: ö, õ, ú, ü
+     244.  00:1D06                      
+     245.  00:1D06                      	ascmap $c1, $EB	;Á
+     246.  00:1D06                      	ascmap $c9, $f1 ;É
+     247.  00:1D06                      	ascmap $cd, $e2 ;Í
+     248.  00:1D06                      	ascmap $d3, $f9 ;Ó
+     249.  00:1D06                      	ascmap $d6, $F7 ;Ö
+     250.  00:1D06                      	ascmap $d5, $E3 ;Õ
+     251.  00:1D06                      	ascmap $da, $f8 ;Ú
+     252.  00:1D06                      	ascmap $dc, $F3 ;Ü
+     253.  00:1D06                      	ascmap $db, $f2 ;Û
+     254.  00:1D06                      		
+     255.  00:1D06                      	
+     256.  00:1D06                      .text:
+     257.  00:1D06                        asc " Helló! Ez egy egyszerû scroll-teszt demó a TVC256k++ kártyához!! Ahogy láthatod nincs gond az egyenletes scroll-élménnyel"
+     257.  00:1D06  20 08 85 8C 8C F6 21 20 05 9A 20 85 87 99 20 85 
+     257.  00:1D16  87 99 93 9A 85 92 FB 20 93 83 92 8F 8C 8C 2D 94 
+     257.  00:1D26  85 93 9A 94 20 84 85 8D F6 20 81 20 14 16 03 32 
+     257.  00:1D36  35 36 8B 2B 2B 20 8B F0 92 94 99 F0 88 8F 9A 21 
+     257.  00:1D46  21 20 01 88 8F 87 99 20 8C F0 94 88 81 94 8F 84 
+     257.  00:1D56  20 8E 89 8E 83 93 20 87 8F 8E 84 20 81 9A 20 85 
+     257.  00:1D66  87 99 85 8E 8C 85 94 85 93 20 93 83 92 8F 8C 8C 
+     257.  00:1D76  2D EC 8C 8D EC 8E 8E 99 85 8C 
+     258.  00:1D80                        asc " a jó ", $f4, "reg TVC-n. Ajánlom figyelmedbe a sprite-ok mozgását a háttérhez képest! Nagy helló Debrecennek, mindenkit "
+     258.  00:1D80  20 81 20 8A F6 20 F4 92 85 87 20 14 16 03 2D 8E 
+     258.  00:1D90  2E 20 01 8A F0 8E 8C 8F 8D 20 86 89 87 99 85 8C 
+     258.  00:1DA0  8D 85 84 82 85 20 81 20 93 90 92 89 94 85 2D 8F 
+     258.  00:1DB0  8B 20 8D 8F 9A 87 F0 93 F0 94 20 81 20 88 F0 94 
+     258.  00:1DC0  94 EC 92 88 85 9A 20 8B EC 90 85 93 94 21 20 0E 
+     258.  00:1DD0  81 87 99 20 88 85 8C 8C F6 20 04 85 82 92 85 83 
+     258.  00:1DE0  85 8E 8E 85 8B 2C 20 8D 89 8E 84 85 8E 8B 89 94 
+     258.  00:1DF0  20 
+     259.  00:1DF1                        asc $ee, "dv", $f4, "zl", $f4, "k a Cívis Mikroklub el", $e5, "adásain! 2026.03.07., Sanyi    ***  " 
+     259.  00:1DF1  EE 84 96 F4 9A 8C F4 8B 20 81 20 03 E1 96 89 93 
+     259.  00:1E01  20 0D 89 8B 92 8F 8B 8C 95 82 20 85 8C E5 81 84 
+     259.  00:1E11  F0 93 81 89 8E 21 20 32 30 32 36 2E 30 33 2E 30 
+     259.  00:1E21  37 2E 2C 20 13 81 8E 99 89 20 20 20 20 2A 2A 2A 
+     259.  00:1E31  20 20 
+     260.  00:1E33                        asc " Hello! This is a simple scroll test of the TVC256k++ !! You can see that there is no problem with smooth scrolling on the TVC"
+     260.  00:1E33  20 08 85 8C 8C 8F 21 20 14 88 89 93 20 89 93 20 
+     260.  00:1E43  81 20 93 89 8D 90 8C 85 20 93 83 92 8F 8C 8C 20 
+     260.  00:1E53  94 85 93 94 20 8F 86 20 94 88 85 20 14 16 03 32 
+     260.  00:1E63  35 36 8B 2B 2B 20 21 21 20 19 8F 95 20 83 81 8E 
+     260.  00:1E73  20 93 85 85 20 94 88 81 94 20 94 88 85 92 85 20 
+     260.  00:1E83  89 93 20 8E 8F 20 90 92 8F 82 8C 85 8D 20 97 89 
+     260.  00:1E93  94 88 20 93 8D 8F 8F 94 88 20 93 83 92 8F 8C 8C 
+     260.  00:1EA3  89 8E 87 20 8F 8E 20 94 88 85 20 14 16 03 
+     261.  00:1EB1                        asc " computers anymore. Greetings to Debrecen, to Cívis Mikroklub!  2026-03-07, by Sanyi    ***  "
+     261.  00:1EB1  20 83 8F 8D 90 95 94 85 92 93 20 81 8E 99 8D 8F 
+     261.  00:1EC1  92 85 2E 20 07 92 85 85 94 89 8E 87 93 20 94 8F 
+     261.  00:1ED1  20 04 85 82 92 85 83 85 8E 2C 20 94 8F 20 03 E1 
+     261.  00:1EE1  96 89 93 20 0D 89 8B 92 8F 8B 8C 95 82 21 20 20 
+     261.  00:1EF1  32 30 32 36 2D 30 33 2D 30 37 2C 20 82 99 20 13 
+     261.  00:1F01  81 8E 99 89 20 20 20 20 2A 2A 2A 20 20 
+     262.  00:1F0E                        asc " (Ezt a programot a Launcher miatt javítani kellett, mert t", $f4, "nkretette a kártya által beállított sprite-okat. Bp., 2026-07-20, Sanyi)    ***  "
+     262.  00:1F0E  20 28 05 9A 94 20 81 20 90 92 8F 87 92 81 8D 8F 
+     262.  00:1F1E  94 20 81 20 0C 81 95 8E 83 88 85 92 20 8D 89 81 
+     262.  00:1F2E  94 94 20 8A 81 96 E1 94 81 8E 89 20 8B 85 8C 8C 
+     262.  00:1F3E  85 94 94 2C 20 8D 85 92 94 20 94 F4 8E 8B 92 85 
+     262.  00:1F4E  94 85 94 94 85 20 81 20 8B F0 92 94 99 81 20 F0 
+     262.  00:1F5E  8C 94 81 8C 20 82 85 F0 8C 8C E1 94 8F 94 94 20 
+     262.  00:1F6E  93 90 92 89 94 85 2D 8F 8B 81 94 2E 20 02 90 2E 
+     262.  00:1F7E  2C 20 32 30 32 36 2D 30 37 2D 32 30 2C 20 13 81 
+     262.  00:1F8E  8E 99 89 29 20 20 20 20 2A 2A 2A 20 20 
+     263.  00:1F9B  00                    db 0
+     264.  00:1F9C                        
+     265.  00:1F9C                        
+     266.  00:1F9C                      
+     267.  00:1F9C                      set_sprite_positions:
+     268.  00:1F9C  3A 2C 22            	ld a, (.counter)
+     269.  00:1F9F  3D                  	dec a
+     270.  00:1FA0  32 2C 22            	ld (.counter), a
+     271.  00:1FA3  C0                  	ret nz
+     272.  00:1FA4  3E 01               	ld a, 1
+     273.  00:1FA6  32 2C 22            	ld (.counter), a
+     274.  00:1FA9                      
+     275.  00:1FA9  0C                  	inc c
+     276.  00:1FAA  0C                  	inc c
+     277.  00:1FAB  3E 02               	ld a, 2
+     278.  00:1FAD  ED 79               	out (c), a
+     279.  00:1FAF  0D                  	dec c
+     280.  00:1FB0  0D                  	dec c
+     281.  00:1FB1                      	
+     282.  00:1FB1  3E 00               	ld a, PPREG_SPRITE_X
+     283.  00:1FB3  ED 79               	out (c), a
+     284.  00:1FB5  0C                  	inc c
+     285.  00:1FB6                      	
+     286.  00:1FB6  06 00               	ld b, $00
+     287.  00:1FB8  16 00               	ld d, 0
+     288.  00:1FBA                      .loop_set_pos_x
+     289.  00:1FBA                      	
+     290.  00:1FBA  58                  	ld e, b
+     291.  00:1FBB                      	
+     292.  00:1FBB  21 FC 21            	ld hl, .DX
+     293.  00:1FBE  19                  	add hl, de
+     294.  00:1FBF  5E                  	ld e, (hl)
+     295.  00:1FC0  34                  	inc (hl)
+     296.  00:1FC1  21 3E 20            	ld hl, .POS_X
+     297.  00:1FC4  19                  	add hl, de
+     298.  00:1FC5  7E                  	ld a, (hl)
+     299.  00:1FC6  B7                  	or a
+     300.  00:1FC7  20 0B               	jr nz, .dx_ok
+     301.  00:1FC9                      	
+     302.  00:1FC9  58                  	ld e, b
+     303.  00:1FCA  21 FC 21            	ld hl, .DX
+     304.  00:1FCD  19                  	add hl, de
+     305.  00:1FCE  AF                  	xor a
+     306.  00:1FCF  77                  	ld (hl), a
+     307.  00:1FD0  21 3E 20            	ld hl, .POS_X
+     308.  00:1FD3  7E                  	ld a, (hl)
+     309.  00:1FD4                      .dx_ok
+     310.  00:1FD4  ED 79               	out (c), a
+     311.  00:1FD6                      	
+     312.  00:1FD6  04                  	inc b
+     313.  00:1FD7  3E 10               	ld a, 16
+     314.  00:1FD9  B8                  	cp b
+     315.  00:1FDA  20 DE               	jr nz, .loop_set_pos_x
+     316.  00:1FDC  0D                  	dec c
+     317.  00:1FDD                      
+     318.  00:1FDD                      ; from now, let's set the Y of each sprites. 
+     319.  00:1FDD                      	
+     320.  00:1FDD  3E 20               	ld a, PPREG_SPRITE_Y
+     321.  00:1FDF  ED 79               	out (c), a
+     322.  00:1FE1  0C                  	inc c
+     323.  00:1FE2                      
+     324.  00:1FE2  06 00               	ld b, $00
+     325.  00:1FE4                      .loop_set_pos_y
+     326.  00:1FE4                      	
+     327.  00:1FE4  58                  	ld e, b
+     328.  00:1FE5                      	
+     329.  00:1FE5  21 0C 22            	ld hl, .DY
+     330.  00:1FE8  19                  	add hl, de
+     331.  00:1FE9  5E                  	ld e, (hl)
+     332.  00:1FEA  34                  	inc (hl)
+     333.  00:1FEB  21 2C 21            	ld hl, .POS_Y
+     334.  00:1FEE  19                  	add hl, de
+     335.  00:1FEF  7E                  	ld a, (hl)
+     336.  00:1FF0  B7                  	or a
+     337.  00:1FF1  20 27               	jr nz, .dy_ok
+     338.  00:1FF3                      	
+     339.  00:1FF3  58                  	ld e, b
+     340.  00:1FF4  21 0C 22            	ld hl, .DY
+     341.  00:1FF7  19                  	add hl, de
+     342.  00:1FF8  AF                  	xor a
+     343.  00:1FF9  77                  	ld (hl), a
+     344.  00:1FFA                      	
+     345.  00:1FFA  79                  	ld a, c
+     346.  00:1FFB  C6 03               	add 3
+     347.  00:1FFD  4F                  	ld c, a
+     348.  00:1FFE                      	
+     349.  00:1FFE  58                  	ld e, b
+     350.  00:1FFF  21 1C 22            	ld hl, .DFG
+     351.  00:2002  19                  	add hl, de
+     352.  00:2003  7E                  	ld a, (hl)
+     353.  00:2004  EE 01               	xor $01
+     354.  00:2006  77                  	ld (hl), a
+     355.  00:2007  F5                  	push af
+     356.  00:2008  3E 60               	ld a, $60
+     357.  00:200A  80                  	add b
+     358.  00:200B  ED 79               	out (c), a
+     359.  00:200D  0C                  	inc c
+     360.  00:200E  F1                  	pop af
+     361.  00:200F  ED 79               	out (c), a
+     362.  00:2011  0D                  	dec c
+     363.  00:2012                      	
+     364.  00:2012  79                  	ld a, c
+     365.  00:2013  D6 03               	sub 3
+     366.  00:2015  4F                  	ld c, a
+     367.  00:2016                      	
+     368.  00:2016  21 2C 21            	ld hl, .POS_Y
+     369.  00:2019  7E                  	ld a, (hl)
+     370.  00:201A                      .dy_ok
+     371.  00:201A  ED 79               	out (c), a
+     372.  00:201C                      	
+     373.  00:201C  04                  	inc b
+     374.  00:201D  3E 10               	ld a, $10
+     375.  00:201F  B8                  	cp b
+     376.  00:2020  20 C2               	jr nz, .loop_set_pos_y
+     377.  00:2022                      	
+     378.  00:2022                      	
+     379.  00:2022                      	; let's clear the auto port increment. C is now <base port>+1
+     380.  00:2022  0C                  	inc c
+     381.  00:2023  AF                  	xor a
+     382.  00:2024  ED 79               	out (c), a
+     383.  00:2026  0D                  	dec c
+     384.  00:2027  0D                  	dec c
+     385.  00:2028                      	
+     386.  00:2028  C9                  	ret
+     387.  00:2029                      
+     388.  00:2029                      .fill_d:
+     389.  00:2029  06 00               	ld b, 00
+     390.  00:202B  0E 00               	ld c, 0
+     391.  00:202D                      .fill_d_loop
+     392.  00:202D  71                  	ld (hl), c
+     393.  00:202E  3E 09               	ld a, 9
+     394.  00:2030  81                  	add c
+     395.  00:2031  BA                  	cp d
+     396.  00:2032  38 01               	jr c, .set_properly
+     397.  00:2034  92                  	sub d
+     398.  00:2035                      .set_properly
+     399.  00:2035  4F                  	ld c, a
+     400.  00:2036                      
+     401.  00:2036  23                  	inc hl
+     402.  00:2037  04                  	inc b
+     403.  00:2038  3E 10               	ld a, $10
+     404.  00:203A  B8                  	cp b
+     405.  00:203B  20 F0               	jr nz, .fill_d_loop
+     406.  00:203D  C9                  	ret
+     407.  00:203E                      
+     408.  00:203E                      .POS_X:	; 237
+     409.  00:203E                      	db 140 , 143 , 146 , 149 , 152 , 155 , 158 , 161 , 164 , 167 , 170 , 173 , 176 , 179 , 182 , 185
+     409.  00:203E  8C 8F 92 95 98 9B 9E A1 A4 A7 AA AD B0 B3 B6 B9 
+     410.  00:204E                      	db 187 , 190 , 193 , 196 , 198 , 201 , 203 , 206 , 208 , 211 , 213 , 215 , 218 , 220 , 222 , 224
+     410.  00:204E  BB BE C1 C4 C6 C9 CB CE D0 D3 D5 D7 DA DC DE E0 
+     411.  00:205E                      	db 226 , 228 , 230 , 232 , 234 , 236 , 237 , 239 , 240 , 242 , 243 , 244 , 246 , 247 , 248 , 249
+     411.  00:205E  E2 E4 E6 E8 EA EC ED EF F0 F2 F3 F4 F6 F7 F8 F9 
+     412.  00:206E                      	db 250 , 251 , 252 , 252 , 253 , 253 , 254 , 254 , 255 , 255 , 255 , 255 , 255 , 255 , 255 , 254
+     412.  00:206E  FA FB FC FC FD FD FE FE FF FF FF FF FF FF FF FE 
+     413.  00:207E                      	db 254 , 254 , 253 , 253 , 252 , 251 , 250 , 249 , 248 , 247 , 246 , 245 , 244 , 243 , 241 , 240
+     413.  00:207E  FE FE FD FD FC FB FA F9 F8 F7 F6 F5 F4 F3 F1 F0 
+     414.  00:208E                      	db 238 , 236 , 235 , 233 , 231 , 229 , 227 , 225 , 223 , 221 , 219 , 217 , 214 , 212 , 210 , 207
+     414.  00:208E  EE EC EB E9 E7 E5 E3 E1 DF DD DB D9 D6 D4 D2 CF 
+     415.  00:209E                      	db 205 , 202 , 199 , 197 , 194 , 191 , 189 , 186 , 183 , 180 , 177 , 175 , 172 , 169 , 166 , 163
+     415.  00:209E  CD CA C7 C5 C2 BF BD BA B7 B4 B1 AF AC A9 A6 A3 
+     416.  00:20AE                      	db 160 , 157 , 154 , 151 , 148 , 145 , 142 , 138 , 135 , 132 , 129 , 126 , 123 , 120 , 117 , 114
+     416.  00:20AE  A0 9D 9A 97 94 91 8E 8A 87 84 81 7E 7B 78 75 72 
+     417.  00:20BE                      	db 111 , 108 , 105 , 103 , 100 , 97 , 94 , 91 , 89 , 86 , 83 , 81 , 78 , 75 , 73 , 70
+     417.  00:20BE  6F 6C 69 67 64 61 5E 5B 59 56 53 51 4E 4B 49 46 
+     418.  00:20CE                      	db 68 , 66 , 63 , 61 , 59 , 57 , 55 , 53 , 51 , 49 , 47 , 45 , 44 , 42 , 40 , 39
+     418.  00:20CE  44 42 3F 3D 3B 39 37 35 33 31 2F 2D 2C 2A 28 27 
+     419.  00:20DE                      	db 37 , 36 , 35 , 34 , 33 , 32 , 31 , 30 , 29 , 28 , 27 , 27 , 26 , 26 , 26 , 25
+     419.  00:20DE  25 24 23 22 21 20 1F 1E 1D 1C 1B 1B 1A 1A 1A 19 
+     420.  00:20EE                      	db 25 , 25 , 25 , 25 , 25 , 25 , 26 , 26 , 27 , 27 , 28 , 28 , 29 , 30 , 31 , 32
+     420.  00:20EE  19 19 19 19 19 19 1A 1A 1B 1B 1C 1C 1D 1E 1F 20 
+     421.  00:20FE                      	db 33 , 34 , 36 , 37 , 38 , 40 , 41 , 43 , 44 , 46 , 48 , 50 , 52 , 54 , 56 , 58
+     421.  00:20FE  21 22 24 25 26 28 29 2B 2C 2E 30 32 34 36 38 3A 
+     422.  00:210E                      	db 60 , 62 , 65 , 67 , 69 , 72 , 74 , 77 , 79 , 82 , 84 , 87 , 90 , 93 , 95 , 98
+     422.  00:210E  3C 3E 41 43 45 48 4A 4D 4F 52 54 57 5A 5D 5F 62 
+     423.  00:211E                      	db 101 , 104 , 107 , 110 , 113 , 116 , 119 , 122 , 125 , 128 , 131 , 134 , 137
+     423.  00:211E  65 68 6B 6E 71 74 77 7A 7D 80 83 86 89 
+     424.  00:212B  00                  	db 0
+     425.  00:212C                      
+     426.  00:212C                      .POS_Y: ; $C8 = 207
+     427.  00:212C                      	db 21 , 21 , 21 , 21 , 21 , 22 , 22 , 22 , 23 , 23 , 23 , 24 , 24 , 25 , 26 , 26
+     427.  00:212C  15 15 15 15 15 16 16 16 17 17 17 18 18 19 1A 1A 
+     428.  00:213C                      	db 27 , 28 , 29 , 30 , 31 , 32 , 33 , 34 , 35 , 36 , 37 , 38 , 40 , 41 , 42 , 44
+     428.  00:213C  1B 1C 1D 1E 1F 20 21 22 23 24 25 26 28 29 2A 2C 
+     429.  00:214C                      	db 45 , 47 , 48 , 50 , 52 , 53 , 55 , 57 , 59 , 61 , 62 , 64 , 66 , 68 , 70 , 72
+     429.  00:214C  2D 2F 30 32 34 35 37 39 3B 3D 3E 40 42 44 46 48 
+     430.  00:215C                      	db 75 , 77 , 79 , 81 , 83 , 86 , 88 , 90 , 93 , 95 , 98 , 100 , 103 , 105 , 108 , 110
+     430.  00:215C  4B 4D 4F 51 53 56 58 5A 5D 5F 62 64 67 69 6C 6E 
+     431.  00:216C                      	db 113 , 116 , 118 , 121 , 124 , 126 , 129 , 132 , 135 , 138 , 141 , 144 , 146 , 149 , 152 , 155
+     431.  00:216C  71 74 76 79 7C 7E 81 84 87 8A 8D 90 92 95 98 9B 
+     432.  00:217C                      	db 158 , 161 , 164 , 167 , 170 , 174 , 177 , 180 , 183 , 186 , 189 , 192 , 195 , 199 , 202 , 205
+     432.  00:217C  9E A1 A4 A7 AA AE B1 B4 B7 BA BD C0 C3 C7 CA CD 
+     433.  00:218C                      	db 208 , 211 , 214 , 218 , 221 , 224 , 227 , 230 , 234 , 230 , 227 , 224 , 221 , 218 , 214 , 211
+     433.  00:218C  D0 D3 D6 DA DD E0 E3 E6 EA E6 E3 E0 DD DA D6 D3 
+     434.  00:219C                      	db 208 , 205 , 202 , 199 , 195 , 192 , 189 , 186 , 183 , 180 , 177 , 174 , 170 , 167 , 164 , 161
+     434.  00:219C  D0 CD CA C7 C3 C0 BD BA B7 B4 B1 AE AA A7 A4 A1 
+     435.  00:21AC                      	db 158 , 155 , 152 , 149 , 146 , 144 , 141 , 138 , 135 , 132 , 129 , 126 , 124 , 121 , 118 , 116
+     435.  00:21AC  9E 9B 98 95 92 90 8D 8A 87 84 81 7E 7C 79 76 74 
+     436.  00:21BC                      	db 113 , 110 , 108 , 105 , 103 , 100 , 98 , 95 , 93 , 90 , 88 , 86 , 83 , 81 , 79 , 77
+     436.  00:21BC  71 6E 6C 69 67 64 62 5F 5D 5A 58 56 53 51 4F 4D 
+     437.  00:21CC                      	db 75 , 72 , 70 , 68 , 66 , 64 , 62 , 61 , 59 , 57 , 55 , 53 , 52 , 50 , 48 , 47
+     437.  00:21CC  4B 48 46 44 42 40 3E 3D 3B 39 37 35 34 32 30 2F 
+     438.  00:21DC                      	db 45 , 44 , 42 , 41 , 40 , 38 , 37 , 36 , 35 , 34 , 33 , 32 , 31 , 30 , 29 , 28
+     438.  00:21DC  2D 2C 2A 29 28 26 25 24 23 22 21 20 1F 1E 1D 1C 
+     439.  00:21EC                      	db 27 , 26 , 26 , 25 , 24 , 24 , 23 , 23 , 23 , 22 , 22 , 22 , 21 , 21 , 21
+     439.  00:21EC  1B 1A 1A 19 18 18 17 17 17 16 16 16 15 15 15 
+     440.  00:21FB  00                  	db 0
+     441.  00:21FC                      
+     442.  00:21FC                      .DX:
+     443.  00:21FC                      	db 32, 30, 28, 26, 24, 22, 20, 18, 16, 14, 12, 10, 8, 6, 4, 2
+     443.  00:21FC  20 1E 1C 1A 18 16 14 12 10 0E 0C 0A 08 06 04 02 
+     444.  00:220C                      .DY:
+     445.  00:220C                      	db 32, 30, 28, 26, 24, 22, 20, 18, 16, 14, 12, 10, 8, 6, 4, 2
+     445.  00:220C  20 1E 1C 1A 18 16 14 12 10 0E 0C 0A 08 06 04 02 
+     446.  00:221C                      .DFG
+     447.  00:221C  00 (16)             	ds 16
+     448.  00:222C                      .counter
+     449.  00:222C  03                      db 3
+     153   00:222D                      
+     154   00:222D                      id_string:
+     155   00:222D                        db 6, "256k++"
+     155   00:222D  06 32 35 36 6B 2B 2B 
+     156   00:2234                      set_base_port:
+     157   00:2234  21 40 00            	ld hl, $0040
+     158   00:2237                      .find_loop
+     159   00:2237  E5                  	push hl
+     160   00:2238  11 2D 22            	ld de, id_string
+     161   00:223B  06 07               	ld b, 7
+     162   00:223D                      
+     163   00:223D  CD 63 22            	call .cmp_loop
+     164   00:2240  E1                  	pop hl
+     165   00:2241  28 12               	jr z, .id_found
+     166   00:2243  11 30 00            	ld de, $0030
+     167   00:2246  19                  	add hl, de
+     168   00:2247  3E 01               	ld a, $01
+     169   00:2249  BC                  	cp h
+     170   00:224A  20 EB               	jr nz, .find_loop
+     171   00:224C  21 6C 22            	ld hl, .no_id_found_str
+     172   00:224F  CD 82 22            	call print_cstring
+     173   00:2252  AF                  	xor a
+     174   00:2253  3C                  	inc a
+     175   00:2254  C9                  	ret
+     176   00:2255                      
+     177   00:2255                      .id_found:
+     178   00:2255  7D                  	LD      A,L
+     179   00:2256  D6 10               	SUB     $10 
+     180   00:2258  E6 C0               	AND     $C0 ; $00, $40, $80, $c0
+     181   00:225A  0F                  	RRCA     
+     182   00:225B  0F                  	RRCA     ; $00, $10, $20, $30
+     183   00:225C  C6 10               	ADD     A,$10
+     184   00:225E  32 C3 22            	LD      (BASE_PORT),A
+     185   00:2261  AF                  	xor a
+     186   00:2262  C9                  	ret
+     187   00:2263                        
+     188   00:2263                      .cmp_loop:
+     189   00:2263  1A                  	ld a, (de)
+     190   00:2264  BE                  	cp (hl)
+     191   00:2265  C0                  	ret nz
+     192   00:2266  23                  	inc hl
+     193   00:2267  13                  	inc de
+     194   00:2268  10 F9               	djnz .cmp_loop
+     195   00:226A  AF                  	xor a
+     196   00:226B  C9                  	ret
+     197   00:226C                      .no_id_found_str:
+     198   00:226C                        dz "TVC 256k++ not found!"  
+     198   00:226C  54 56 43 20 32 35 36 6B 2B 2B 20 6E 6F 74 20 66 
+     198   00:227C  6F 75 6E 64 21 00 
+     199   00:2282                      
+     200   00:2282                      print_cstring:       
+     201   00:2282  C5                  	push bc
+     202   00:2283  F5                  	push af
+     203   00:2284                      .print_cstring_loop:
+     204   00:2284  4E                  	LD      c,(hl) 
+     205   00:2285  AF                  	XOR     a 
+     206   00:2286  B9                  	CP      c 
+     207   00:2287  28 07               	JR      z,.cstring_done 
+     208   00:2289  E5                  	PUSH    hl 
+     209   00:228A  F7                  	RST     30h 
+     210   00:228B  21                  	DB      $21 
+     211   00:228C  E1                  	POP     hl 
+     212   00:228D  23                  	INC     hl 
+     213   00:228E  18 F4               	JR      .print_cstring_loop
+     214   00:2290                      .cstring_done:
+     215   00:2290  F1                  	pop af
+     216   00:2291  C1                  	pop bc
+     217   00:2292  C9                  	RET
+     218   00:2293                      print_hex_word:
+     219   00:2293  7C                  	ld a, h
+     220   00:2294  CD 98 22            	call print_hex_byte
+     221   00:2297  7D                  	ld a, l
+     222   00:2298                      print_hex_byte:      
+     223   00:2298  C5                  	PUSH    BC 
+     224   00:2299  F5                  	PUSH    AF 
+     225   00:229A  0F                  	RRCA     
+     226   00:229B  0F                  	RRCA     
+     227   00:229C  0F                  	RRCA     
+     228   00:229D  0F                  	RRCA     
+     229   00:229E  E6 0F               	AND     $0F 
+     230   00:22A0  CD AB 22            	CALL    print_hex_digit
+     231   00:22A3  F1                  	POP     AF 
+     232   00:22A4  E6 0F               	AND     $0F 
+     233   00:22A6  CD AB 22            	CALL    print_hex_digit
+     234   00:22A9  C1                  	POP     BC 
+     235   00:22AA  C9                  	RET      
+     236   00:22AB                      print_hex_digit:     
+     237   00:22AB  FE 0A               	CP      10 
+     238   00:22AD  30 04               	JR      nc,.alpha_chars
+     239   00:22AF  C6 30               	ADD     A,"0" 
+     240   00:22B1  18 02               	JR      print_char
+     241   00:22B3                      .alpha_chars:         
+     242   00:22B3  C6 37               	ADD     A,"A" - 10 
+     243   00:22B5                      print_char:
+     244   00:22B5  4F                  	LD      C,A 
+     245   00:22B6  F7                  	RST     30h 
+     246   00:22B7  21                  	DB      $21
+     247   00:22B8  C9                  	RET
+     248   00:22B9                      	
+     249   00:22B9                      print_newline:
+     250   00:22B9  21 C0 22            	ld hl, .newline
+     251   00:22BC  CD 82 22            	call print_cstring
+     252   00:22BF  C9                  	ret
+     253   00:22C0                      .newline
+     254   00:22C0  0D 0A 00            	dz "\r\n"
+     255   00:22C3                      
+     256   00:22C3                      			
+     257   00:22C3                      BASE_PORT:
+     258   00:22C3  00                    db 00
+     259   00:22C4                      
+     260   00:22C4                      VIDEOTON:
+     261   00:22C4                      	; V
+     262   00:22C4                           db $00,$00,$00,$3c,$00,$0c,$46,$03
+     262   00:22C4  00 00 00 3C 00 0C 46 03 
+     263   00:22CC                           db $fc,$43,$03,$0c,$61,$86,$0c,$30
+     263   00:22CC  FC 43 03 0C 61 86 0C 30 
+     264   00:22D4                           db $cc,$18,$30,$68,$30,$18,$38,$30
+     264   00:22D4  CC 18 30 68 30 18 38 30 
+     265   00:22DC                           db $0c,$30,$60,$06,$00,$c0,$06,$00
+     265   00:22DC  0C 30 60 06 00 C0 06 00 
+     266   00:22E4                           db $80,$03,$01,$80,$01,$83,$00,$01
+     266   00:22E4  80 03 01 80 01 83 00 01 
+     267   00:22EC                           db $83,$00,$00,$c6,$00,$00,$cc,$00
+     267   00:22EC  83 00 00 C6 00 00 CC 00 
+     268   00:22F4                           db $00,$68,$00,$00,$78,$00,$00,$00
+     268   00:22F4  00 68 00 00 78 00 00 00 
+     269   00:22FC                           db $00,$00,$00,$00,$00,$00,$00,$01
+     269   00:22FC  00 00 00 00 00 00 00 01 
+     270   00:2304                      
+     271   00:2304                      // sprite 1 / singlecolor / color: $01
+     272   00:2304                      // sprite1:
+     273   00:2304                      	; I
+     274   00:2304                           db $00,$00,$00,$01,$f8,$00,$03,$18
+     274   00:2304  00 00 00 01 F8 00 03 18 
+     275   00:230C                           db $00,$03,$18,$00,$03,$18,$00,$03
+     275   00:230C  00 03 18 00 03 18 00 03 
+     276   00:2314                           db $18,$00,$03,$18,$00,$03,$18,$00
+     276   00:2314  18 00 03 18 00 03 18 00 
+     277   00:231C                           db $03,$18,$00,$01,$8c,$00,$01,$8c
+     277   00:231C  03 18 00 01 8C 00 01 8C 
+     278   00:2324                           db $00,$00,$c6,$00,$00,$c6,$00,$00
+     278   00:2324  00 00 C6 00 00 C6 00 00 
+     279   00:232C                           db $c6,$00,$00,$c6,$00,$00,$7c,$00
+     279   00:232C  C6 00 00 C6 00 00 7C 00 
+     280   00:2334                           db $00,$00,$00,$00,$00,$00,$00,$00
+     280   00:2334  00 00 00 00 00 00 00 00 
+     281   00:233C                           db $00,$00,$00,$00,$00,$00,$00,$01
+     281   00:233C  00 00 00 00 00 00 00 01 
+     282   00:2344                      
+     283   00:2344                      // sprite 2 / singlecolor / color: $01
+     284   00:2344                      // sprite2:
+     285   00:2344                      	; D
+     286   00:2344                           db $00,$00,$00,$1f,$f8,$00,$18,$0e
+     286   00:2344  00 00 00 1F F8 00 18 0E 
+     287   00:234C                           db $00,$30,$03,$00,$30,$01,$80,$33
+     287   00:234C  00 30 03 00 30 01 80 33 
+     288   00:2354                           db $c1,$80,$33,$60,$c0,$33,$30,$c0
+     288   00:2354  C1 80 33 60 C0 33 30 C0 
+     289   00:235C                           db $33,$18,$c0,$33,$18,$c0,$33,$30
+     289   00:235C  33 18 C0 33 18 C0 33 30 
+     290   00:2364                           db $c0,$31,$e1,$80,$31,$81,$80,$30
+     290   00:2364  C0 31 E1 80 31 81 80 30 
+     291   00:236C                           db $03,$00,$30,$06,$00,$30,$1c,$00
+     291   00:236C  03 00 30 06 00 30 1C 00 
+     292   00:2374                           db $60,$f0,$00,$7f,$c0,$00,$00,$00
+     292   00:2374  60 F0 00 7F C0 00 00 00 
+     293   00:237C                           db $00,$00,$00,$00,$00,$00,$00,$01
+     293   00:237C  00 00 00 00 00 00 00 01 
+     294   00:2384                      
+     295   00:2384                      // sprite 3 / singlecolor / color: $01
+     296   00:2384                      // sprite3:
+     297   00:2384                      	; E
+     298   00:2384                           db $00,$00,$00,$07,$fe,$00,$7c,$07
+     298   00:2384  00 00 00 07 FE 00 7C 07 
+     299   00:238C                           db $80,$60,$01,$80,$60,$01,$80,$30
+     299   00:238C  80 60 01 80 60 01 80 30 
+     300   00:2394                           db $7f,$00,$33,$e0,$00,$33,$00,$00
+     300   00:2394  7F 00 33 E0 00 33 00 00 
+     301   00:239C                           db $31,$c0,$00,$30,$60,$00,$30,$60
+     301   00:239C  31 C0 00 30 60 00 30 60 
+     302   00:23A4                           db $00,$31,$c0,$00,$73,$00,$00,$63
+     302   00:23A4  00 31 C0 00 73 00 00 63 
+     303   00:23AC                           db $80,$00,$61,$ff,$c0,$60,$00,$60
+     303   00:23AC  80 00 61 FF C0 60 00 60 
+     304   00:23B4                           db $60,$00,$60,$60,$00,$c0,$7f,$ff
+     304   00:23B4  60 00 60 60 00 C0 7F FF 
+     305   00:23BC                           db $80,$00,$00,$00,$00,$00,$00,$01
+     305   00:23BC  80 00 00 00 00 00 00 01 
+     306   00:23C4                      
+     307   00:23C4                      // sprite 4 / singlecolor / color: $01
+     308   00:23C4                      // sprite4:
+     309   00:23C4                      	; O
+     310   00:23C4                           db $00,$00,$00,$00,$ff,$00,$01,$81
+     310   00:23C4  00 00 00 00 FF 00 01 81 
+     311   00:23CC                           db $c0,$03,$00,$60,$06,$00,$30,$0c
+     311   00:23CC  C0 03 00 60 06 00 30 0C 
+     312   00:23D4                           db $00,$38,$18,$00,$18,$18,$7e,$18
+     312   00:23D4  00 38 18 00 18 18 7E 18 
+     313   00:23DC                           db $18,$63,$0c,$30,$c3,$0c,$30,$c1
+     313   00:23DC  18 63 0C 30 C3 0C 30 C1 
+     314   00:23E4                           db $98,$30,$c1,$90,$30,$7f,$90,$18
+     314   00:23E4  98 30 C1 90 30 7F 90 18 
+     315   00:23EC                           db $06,$30,$18,$00,$30,$0e,$00,$60
+     315   00:23EC  06 30 18 00 30 0E 00 60 
+     316   00:23F4                           db $03,$80,$c0,$00,$f9,$c0,$00,$0f
+     316   00:23F4  03 80 C0 00 F9 C0 00 0F 
+     317   00:23FC                           db $00,$00,$00,$00,$00,$00,$00,$01
+     317   00:23FC  00 00 00 00 00 00 00 01 
+     318   00:2404                      
+     319   00:2404                      // sprite 5 / singlecolor / color: $01
+     320   00:2404                      // sprite5:
+     321   00:2404                      	; T
+     322   00:2404                           db $00,$00,$00,$00,$00,$00,$07,$8f
+     322   00:2404  00 00 00 00 00 00 07 8F 
+     323   00:240C                           db $e0,$1f,$ff,$e0,$1f,$ff,$e0,$1f
+     323   00:240C  E0 1F FF E0 1F FF E0 1F 
+     324   00:2414                           db $ff,$c0,$1f,$fe,$00,$00,$7c,$00
+     324   00:2414  FF C0 1F FE 00 00 7C 00 
+     325   00:241C                           db $00,$7c,$00,$00,$7c,$00,$00,$7c
+     325   00:241C  00 7C 00 00 7C 00 00 7C 
+     326   00:2424                           db $00,$00,$7c,$00,$00,$7c,$00,$00
+     326   00:2424  00 00 7C 00 00 7C 00 00 
+     327   00:242C                           db $7c,$00,$00,$7c,$00,$00,$78,$00
+     327   00:242C  7C 00 00 7C 00 00 78 00 
+     328   00:2434                           db $00,$78,$00,$00,$78,$00,$00,$30
+     328   00:2434  00 78 00 00 78 00 00 30 
+     329   00:243C                           db $00,$00,$00,$00,$00,$00,$00,$01
+     329   00:243C  00 00 00 00 00 00 00 01 
+     330   00:2444                      
+     331   00:2444                      // sprite 6 / singlecolor / color: $01
+     332   00:2444                      // sprite4:
+     333   00:2444                      	; O
+     334   00:2444                           db $00,$00,$00,$00,$7f,$00,$01,$ff
+     334   00:2444  00 00 00 00 7F 00 01 FF 
+     335   00:244C                           db $80,$03,$ff,$e0,$07,$ff,$e0,$07
+     335   00:244C  80 03 FF E0 07 FF E0 07 
+     336   00:2454                           db $ff,$f0,$0f,$ff,$f0,$1f,$ff,$f0
+     336   00:2454  FF F0 0F FF F0 1F FF F0 
+     337   00:245C                           db $1f,$c1,$f8,$3f,$81,$f8,$3f,$81
+     337   00:245C  1F C1 F8 3F 81 F8 3F 81 
+     338   00:2464                           db $f0,$3f,$c0,$f0,$3f,$ff,$f0,$1f
+     338   00:2464  F0 3F C0 F0 3F FF F0 1F 
+     339   00:246C                           db $ff,$f0,$1f,$ff,$e0,$0f,$ff,$e0
+     339   00:246C  FF F0 1F FF E0 0F FF E0 
+     340   00:2474                           db $03,$ff,$c0,$00,$ff,$c0,$00,$0e
+     340   00:2474  03 FF C0 00 FF C0 00 0E 
+     341   00:247C                           db $00,$00,$00,$00,$00,$00,$00,$01
+     341   00:247C  00 00 00 00 00 00 00 01 
+     342   00:2484                      
+     343   00:2484                      // sprite 7 / singlecolor / color: $01
+     344   00:2484                      // sprite7:
+     345   00:2484                      	; N
+     346   00:2484                           db $00,$00,$00,$00,$00,$78,$03,$c0
+     346   00:2484  00 00 00 00 00 78 03 C0 
+     347   00:248C                           db $fc,$0f,$e0,$fc,$0f,$f0,$fc,$0f
+     347   00:248C  FC 0F E0 FC 0F F0 FC 0F 
+     348   00:2494                           db $f8,$f8,$0f,$fc,$f8,$0f,$ff,$f8
+     348   00:2494  F8 F8 0F FC F8 0F FF F8 
+     349   00:249C                           db $0f,$ff,$f8,$0f,$ff,$f8,$0f,$9f
+     349   00:249C  0F FF F8 0F FF F8 0F 9F 
+     350   00:24A4                           db $f8,$0f,$9f,$f8,$1f,$8f,$f8,$1f
+     350   00:24A4  F8 0F 9F F8 1F 8F F8 1F 
+     351   00:24AC                           db $8f,$f8,$1f,$8f,$f8,$1f,$87,$f8
+     351   00:24AC  8F F8 1F 8F F8 1F 87 F8 
+     352   00:24B4                           db $1f,$03,$f0,$1f,$03,$f0,$0e,$00
+     352   00:24B4  1F 03 F0 1F 03 F0 0E 00 
+     353   00:24BC                           db $f0,$00,$00,$00,$00,$00,$00,$01
+     353   00:24BC  F0 00 00 00 00 00 00 01 
+     354   00:24C4                      
+     355   00:24C4                      SANTAS_HAT:
+     356   00:24C4                      	db $88, $88, $88, $88, $77, $77, $77, $88, $88, $88, $88, $88, $88, $88, $87, $77
+     356   00:24C4  88 88 88 88 77 77 77 88 88 88 88 88 88 88 87 77 
+     357   00:24D4                          db $77, $77, $77, $77, $77, $88, $88, $88, $88, $87, $77, $7F, $FF, $FF, $FF, $FF
+     357   00:24D4  77 77 77 77 77 88 88 88 88 87 77 7F FF FF FF FF 
+     358   00:24E4                          db $F7, $77, $77, $88, $88, $77, $FF, $FF, $FF, $FF, $FF, $FF, $FF, $F7, $77, $88
+     358   00:24E4  F7 77 77 88 88 77 FF FF FF FF FF FF FF F7 77 88 
+     359   00:24F4                          db $88, $7F, $FF, $FF, $FF, $FF, $FF, $FF, $FF, $F7, $77, $78, $88, $FF, $FF, $F4
+     359   00:24F4  88 7F FF FF FF FF FF FF FF F7 77 78 88 FF FF F4 
+     360   00:2504                          db $44, $44, $44, $44, $FF, $F7, $77, $78, $88, $FF, $44, $44, $CC, $CC, $C4, $44
+     360   00:2504  44 44 44 44 FF F7 77 78 88 FF 44 44 CC CC C4 44 
+     361   00:2514                          db $44, $44, $77, $88, $88, $84, $4C, $CC, $CC, $CC, $CC, $CC, $CC, $44, $44, $88
+     361   00:2514  44 44 77 88 88 84 4C CC CC CC CC CC CC 44 44 88 
+     362   00:2524                          db $88, $8C, $CC, $CC, $CC, $CC, $CC, $CC, $CC, $C4, $48, $88, $88, $8C, $CC, $CC
+     362   00:2524  88 8C CC CC CC CC CC CC CC C4 48 88 88 8C CC CC 
+     363   00:2534                          db $CC, $CC, $CC, $CC, $CC, $C4, $48, $88, $88, $88, $CC, $CC, $CC, $CC, $CC, $CC
+     363   00:2534  CC CC CC CC CC C4 48 88 88 88 CC CC CC CC CC CC 
+     364   00:2544                          db $CC, $44, $88, $88, $88, $88, $8C, $CC, $CC, $CC, $CC, $CC, $C4, $48, $88, $88
+     364   00:2544  CC 44 88 88 88 88 8C CC CC CC CC CC C4 48 88 88 
+     365   00:2554                          db $88, $88, $88, $CC, $CC, $CC, $CC, $CC, $C4, $48, $77, $78, $88, $88, $88, $CC
+     365   00:2554  88 88 88 CC CC CC CC CC C4 48 77 78 88 88 88 CC 
+     366   00:2564                          db $CC, $CC, $CC, $CC, $44, $87, $7F, $F8, $88, $88, $88, $8C, $CC, $CC, $CC, $C4
+     366   00:2564  CC CC CC CC 44 87 7F F8 88 88 88 8C CC CC CC C4 
+     367   00:2574                          db $48, $87, $FF, $F7, $88, $88, $88, $88, $CC, $CC, $CC, $C4, $48, $84, $4F, $78
+     367   00:2574  48 87 FF F7 88 88 88 88 CC CC CC C4 48 84 4F 78 
+     368   00:2584                          db $88, $88, $88, $88, $8C, $CC, $CC, $CC, $44, $44, $CC, $88, $88, $88, $88, $88
+     368   00:2584  88 88 88 88 8C CC CC CC 44 44 CC 88 88 88 88 88 
+     369   00:2594                          db $88, $CC, $CC, $CC, $CC, $CC, $CC, $88, $88, $88, $88, $88, $88, $8C, $CC, $CC
+     369   00:2594  88 CC CC CC CC CC CC 88 88 88 88 88 88 8C CC CC 
+     370   00:25A4                          db $CC, $CC, $C8, $88, $88, $88, $88, $88, $88, $88, $8C, $CC, $CC, $C8, $88, $88
+     370   00:25A4  CC CC C8 88 88 88 88 88 88 88 8C CC CC C8 88 88 
+     371   00:25B4                          db $88, $88, $88, $88, $88, $88, $88, $88, $88, $88, $88, $88
+     371   00:25B4  88 88 88 88 88 88 88 88 88 88 88 88 
+     372   00:25C0                      	
+     373   00:25C0                      PROGRAM_END:  
+
+    LABELS
+-------------------------------------------------
+00:00000000   PPREG_SPRITE_X
+00:00000020   PPREG_SPRITE_Y
+00:00000040   PPREG_SPRITE_COLOR
+00:00000050   PPREG_SPRITE_PHASE
+00:00000090   PPREG_SPRITE_ENABLE_LOW
+00:00000091   PPREG_SPRITE_ENABLE_HIGH
+00:00000094   PPREG_SPRITE_COLORMODE_LOW
+00:00000095   PPREG_SPRITE_COLORMODE_HIGH
+00:000000A0   PPREG_SCREEN_VIDEOMODE
+00:000000A5   PPREG_SCREEN_SCROLL_X
+00:000000A8   PPREG_SCREEN_Y
+00:000000B0   PPREG_MEMORY_P2
+00:000000C0   PPREG_FUNCTION_EXEC
+00:000000C1   PPREG_FUNCTION_PARAM_START
+00:000000C2   PPREG_FUNCTION_RESULT
+00:000019EF   PROGRAM_START
+00:00001A4C   base_port_addr_str
+00:00001A5B   opening_file_str
+00:00001A6C   reading_file_str
+00:00001A7D   quit_with_error
+00:00001A8D   setup
+00:00001AE6   civis_bmp_name
+00:00001AED   open_file
+00:00001B0E   read_bitmap
+00:00001B40   read_bitmap.loop_load_data
+00:00001B5F   close_file
+00:00001B70   wait_for_func_finish
+00:00001B72   wait_for_func_finish.check_exec_status
+00:00001B75   wait_for_func_finish.wait_loop
+00:00001B8B   wait_for_func_finish.check_result
+00:00001BA5   wait_for_func_finish.operation_timed_out_str
+00:00001BBA   wait_for_func_finish.failed_operation_str
+00:0000001C   SCROLL_POSY
+00:000000F4   STARTLINE
+00:00000B4F   BORDER_COLOR
+00:00001BD9   DEMO
+00:00001C0E   DEMO.color_loop
+00:00001C1C   DEMO.skip_color_fix
+00:00001C30   DEMO.phase_loop0
+00:00001C42   DEMO.phase_loop
+00:00001C81   DEMO.main_loop
+00:00001C86   DEMO.loop_till_no
+00:00001CAC   DEMO.loop_till_yes
+00:00001CE1   DEMO.pos_ok
+00:00001CE7   DEMO.byte_scroll_done
+00:00001D03   DEMO.current_scroll
+00:00001D04   DEMO.current_pos
+00:00001D06   DEMO.text
+00:00001F9C   set_sprite_positions
+00:00001FBA   set_sprite_positions.loop_set_pos_x
+00:00001FD4   set_sprite_positions.dx_ok
+00:00001FE4   set_sprite_positions.loop_set_pos_y
+00:0000201A   set_sprite_positions.dy_ok
+00:00002029   set_sprite_positions.fill_d
+00:0000202D   set_sprite_positions.fill_d_loop
+00:00002035   set_sprite_positions.set_properly
+00:0000203E   set_sprite_positions.POS_X
+00:0000212C   set_sprite_positions.POS_Y
+00:000021FC   set_sprite_positions.DX
+00:0000220C   set_sprite_positions.DY
+00:0000221C   set_sprite_positions.DFG
+00:0000222C   set_sprite_positions.counter
+00:0000222D   id_string
+00:00002234   set_base_port
+00:00002237   set_base_port.find_loop
+00:00002255   set_base_port.id_found
+00:00002263   set_base_port.cmp_loop
+00:0000226C   set_base_port.no_id_found_str
+00:00002282   print_cstring
+00:00002284   print_cstring.print_cstring_loop
+00:00002290   print_cstring.cstring_done
+00:00002293 X print_hex_word
+00:00002298   print_hex_byte
+00:000022AB   print_hex_digit
+00:000022B3   print_hex_digit.alpha_chars
+00:000022B5   print_char
+00:000022B9   print_newline
+00:000022C0   print_newline.newline
+00:000022C3   BASE_PORT
+00:000022C4   VIDEOTON
+00:000024C4   SANTAS_HAT
+00:000025C0   PROGRAM_END
+
+
+ Output: demo-fix.cas
+-------------------------------------------------
+
+ Page: 00
+  Org: 0000195F  Size: *  Used: 00000C61
+
+   Address   Length Align   Label
+   0000195F    3169         PROGRAM_START

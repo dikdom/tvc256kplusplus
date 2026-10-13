@@ -1,0 +1,2 @@
+[console_scripts]
+littlefs-python = littlefs.__main__:main
