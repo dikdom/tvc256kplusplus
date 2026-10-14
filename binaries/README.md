@@ -11,6 +11,8 @@
   A flash drive tartalma, fájlonként
 - tvc-256k++.bin
   Ez Z80 CPU által látott IO ROM, ami egyébként része az MCU firmware -ének. Ezt csak az emulátor fejlesztők kedvéért raktam ide.
+- psram-test.uf2
+  A PSRAM teszt program, azelőtt kell futtatni, mielőtt még az MCU modul a nyáklapra lenne forrasztva
 
 # binaries - English
 - Gerber*
@@ -25,3 +27,5 @@
   Content of the flash drive, file by file
 - tvc-256k++.bin
   This is the card's IO ROM seen by the Z80 CPU. This is part of the firmware (.uf2) file. This is here for the emulator developers.
+- psram-test.uf2
+  PSRAM test program, should be executed before the MCU module is soldered onto the PCB
