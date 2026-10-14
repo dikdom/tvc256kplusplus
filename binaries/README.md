@@ -9,6 +9,8 @@
   A flash drive image, amit a mikrokontrollerre kell másolni. A részletekért lásd a használati útmutatót!
 - flash-root-1.2-files.zip
   A flash drive tartalma, fájlonként
+- tvc-256k++.bin
+  Ez Z80 CPU által látott IO ROM, ami egyébként része az MCU firmware -ének. Ezt csak az emulátor fejlesztők kedvéért raktam ide.
 
 # binaries - English
 - Gerber*
@@ -21,3 +23,5 @@
   The latest image file that needs to be copied to the MCU. Doc explains how to do - in Hungarian...
 - flash-root-1.2-files.zip
   Content of the flash drive, file by file
+- tvc-256k++.bin
+  This is the card's IO ROM seen by the Z80 CPU. This is part of the firmware (.uf2) file. This is here for the emulator developers.
