@@ -19,8 +19,8 @@ A kártyát bárki gyárthatja. Mire van hozzá szükség:
 * WeAct Studio RP2350B Core modulra. Ez a kis modul tartalmaz minden áramkört, ami az MCU -t életben tartja, programozhatóvá teszi
 * 8MB, 3.3V-os PSRAM (ESP PSRAM 64H)
 
-A modul hátlapjára ráforrasztjuk a PSRAM -ot, az egyik képen látható módon ráforrasztjuk a 100nF kondit is. Ez lehet, h lehagyható, de én sosem mertem megtenni.
-Leteszteljük a PSRAM elérést, ha a tesztprogram lefutása után, lustán, másodpercenként villog, akkor minden rendben van. Ha nem, akkor újraforrasztás, stb...
+A modul hátlapjára ráforrasztjuk a PSRAM IC-t, az egyik képen látható módon ráforrasztjuk a 100nF kondit is. Ez lehet, h lehagyható, de én sosem mertem megtenni.
+Leteszteljük a PSRAM elérést (a binaries/test-psram.uf2 firmware -t a modulra töltjük), ha a tesztprogram lefutása után, lustán, másodpercenként villog, akkor minden rendben van. Ha nem, akkor újraforrasztás, stb...
 Ha a PSRAM rendben van, akkor lehet ráforrasztani a nyáklapra, az USB foglalattal és a polyfuse -zal együtt.
 
 Én ezt az [USB foglatatot](https://kontel.hu/spd/139106/USB-CSATL-A-90-HUVELY) használtam. Ugyanitt vettem kondit és biztit.
@@ -50,6 +50,6 @@ The card can be made by anyone. You'll need:
 * WeAct Studio's RP2350B Core module. This little board contains the MCU and all its necessities.
 * 8MB PSRAM, 3.3V (ESP PSRAM 64H)
 
-First you solder the PSRAM at the back side of the module and test it with the provided test code (to be uploaded). If the test code flashes with a 1s periodicity then all good, continue with soldering the 100nF capacitor as seen on one the images. Test again!
-Solder the USB-A socket, the fuze, the pinheaders then the module. You're almost done. You have to connect the module via an USB cable to your computer and upload the (as of now the latest) 0.24 firmware, then the flash drive's image (descibed in the - Hungarian - User's guide).
+First you solder the PSRAM at the back side of the module and test it with the provided test code (binaries/test-psram.uf2). If the test code flashes with a 1s periodicity then all good, continue with soldering the 100nF capacitor as seen on one the images. Test again!
+Solder the USB-A socket, the fuze, the pinheaders then the module. You're almost done. You have to connect the module via an USB cable to your computer and upload the (as of now the latest) 0.24 firmware, then the flash drive's image (described in the - Hungarian - User's guide).
 Now you're done, the card is ready for use in your TVC.
