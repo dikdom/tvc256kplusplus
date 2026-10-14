@@ -12,6 +12,19 @@ Mivel a firmware szervesen magában foglalja és össze linkeli a Timo Kokkonen 
 * **Saját kódok:** A projektben található, saját fejlesztésű forrásfájlok egyenként **MIT licenc** alatt állnak. Ez azt jelenti, hogy ha a kódot kiemeli ebből a környezetből (a GPL-es fájl nélkül), szabadon felhasználhatja megengedő MIT feltételek szerint.
 * **Külső könyvtárak:** A projekt által használt külső komponensek (`pico-pio-usb`, `tinyusb`, `fatfs`, `littlefs`, `zx7Decode` - Einar Saukas) a saját, megengedő nyílt forráskódú (MIT / BSD) licencük alatt maradnak.
 
+## Gyártás
+A kártyát bárki gyárthatja. Mire van hozzá szükség:
+* 100nF kondi, TH, 90 fokos USB socket, 300mA polyfuse, 2db 8.5mm -es (mindkét oldalán 3-3mm -es), 2x15 soros tüskesor. Persze lehet normál 2soros tüskesor is, de akkor az egyik oldalon nagyon ki fog lógni...
+* Nyáklap. Mindegy, h rev2 vagy rev3. Érdemes aranyozott (ENIG), erősített élcsatlakozókkal legyártatni.
+* We Act Core - RP2350B modulra. Ez a kis modul tartalmaz minden áramkört, ami az MCU -t életben tartja, programozhatóvá teszi
+* 8MB, 3.3V-os PSRAM
+
+A modul hátlapjára ráforrasztjuk a PSRAM -ot, az egyik képen látható módon ráforrasztjuk a 100nF kondit is. Ez lehet, h lehagyható, de én sosem mertem megtenni.
+Leteszteljük a PSRAM elérést, ha a tesztprogram lefutása után, lustán, másodpercenként villog, akkor minden rendben van. Ha nem, akkor újraforrasztás, stb...
+Ha a PSRAM rendben van, akkor lehet ráforrasztani a nyáklapra, az USB foglalattal és a polyfuse -zal együtt. Kész.
+[USB socket](https://kontel.hu/spd/139106/USB-CSATL-A-90-HUVELY)
+
+
 # tvc256k++ - English
 This repository contains all the sources of the TVC256k++ card's firmware, demo and test programs and also sources for HW production.
 
